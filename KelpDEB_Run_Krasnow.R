@@ -22,6 +22,9 @@ library(patchwork)
 #Required for model runs
 source("SolveR_R.R")
 source("KelpDEB_model.R")
+source("./outdoorExpt/outdoorHOBO/outdoor_HOBO.R")
+source("./outdoorExpt/outdoor_expt.R")
+
 #Required for Calibration Code
 source("N_uptake_Calibration.R")
 source("Photosynthesis_Calibration.R")
@@ -114,6 +117,17 @@ params_Lo <- c(#maximum volume-specific assimilation rate of N before temperatur
                T_AL = 4391.9, #K
                #temperature at which rate parameters are given
                T_0 = 20 + 273.15) # K
+
+high_params_for_model <- params_Lo
+med_params_for_model <- params_Lo
+low_params_for_model <- params_Lo
+new_params_for_model <- params_Lo
+
+high_params_for_model[c("T_A", "T_H", "T_AH")]<-c(high_T_A, high_T_H,high_T_AH)
+med_params_for_model[c("T_A", "T_H", "T_AH")]<-c(med_T_A, med_T_H,med_T_AH)
+low_params_for_model[c("T_A", "T_H", "T_AH")]<-c(low_T_A, low_T_H,low_T_AH)
+new_params_for_model[c("T_A", "T_H", "T_AH")]<-c(new_T_A, new_T_H, new_T_AH)
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ####### Initial conditions ############
 #Initial conditions of state variables
@@ -203,10 +217,14 @@ AvgTempKbyhr_part2 <- AvgTempKbyhr$x[860:4009] #later part of original temp file
 T_field <- approxfun(x = c(0:4008), y = c(AvgTempKbyhr_part1, fd, AvgTempKbyhr_part2), method = "linear", rule = 2) #the temp forcing function
 T_Sled1_Y1 <- T_field(0:4008) #saving the forcing this way for ease of later visualization
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#Model run (the differential equation solver)
+#### Model runs ####
+# (the differential equation solver)
+#T_field <- approxfun(x = c(0:4008), y = c(AvgTempKbyhr_part1+2, fd+2, AvgTempKbyhr_part2+2), method = "linear", rule = 2)
+
 sol_Sled1 <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = params_Lo)
 
+W <- 0.05
+sol_new_Sled1 <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = new_params_for_model)
 W <- 0.05
 sol_high_Sled1 <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = high_params_for_model)
 W <- 0.05
@@ -244,10 +262,10 @@ fd <- AvgTempKbyhr4FD$x[858:859] #526 data points needed from dredge to replace 
 T_field <- approxfun(x = c(0:3336), y = c(fd, AvgTempKbyhr$x), method = "linear", rule = 2) #the temp forcing function
 T_Sled2_Y1 <- T_field(0:3336) #for later ease in plotting the forcing
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#Model run (the differential equation solver)
+##### Model runs ####
 sol_Sled2 <- ode(y = state_Lo, t = times_Lo_Sled2, func = rates_Lo, parms = params_Lo)
-
+W <- 0.05
+sol_new_Sled2 <- ode(y = state_Lo, t = times_Lo_Sled2, func = rates_Lo, parms = new_params_for_model)
 W <- 0.05
 sol_high_Sled2 <- ode(y = state_Lo, t = times_Lo_Sled2, func = rates_Lo, parms = high_params_for_model)
 W <- 0.05
@@ -277,10 +295,11 @@ AvgTempKbyhr <- AvgTempKbyhr[4:4132, ] #subset
 T_field <- approxfun(x = c(0:4128), y = AvgTempKbyhr$x, method = "linear", rule = 2) #the temp forcing function
 T_Dredge1_Y1 <- T_field(0:4128) #for ease in later plotting of the forcing
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#Model run (the differential equation solver)
+#### Model runs ####
 sol_Dredge1 <- ode(y = state_Lo, t = times_Lo_Dredge1, func = rates_Lo, parms = params_Lo)
 
+W <- 0.05
+sol_new_Dredge1 <- ode(y = state_Lo, t = times_Lo_Dredge1, func = rates_Lo, parms = new_params_for_model)
 W <- 0.05
 sol_high_Dredge1 <- ode(y = state_Lo, t = times_Lo_Dredge1, func = rates_Lo, parms = high_params_for_model)
 W <- 0.05
@@ -299,11 +318,11 @@ N$NitrateNitrite_uM <- N$NitrateNitrite_uM/1000000 #convert from micromoles/L to
 #multiplied by 24 to convert from daily to hourly
 N_field <- approxfun(x = c(111*24, 133*24, 56*24, -28*24, 77*24), y = N$NitrateNitrite_uM, method = "linear", rule = 2) #N forcing function
 
-###### NOAA Irradiance forcing set-up Judith S 2 ####
+###### NOAA Irradiance set-up Judith S 2 ####
 NOAA_Irradiance_Dredgey1_L2 <-  NOAA_Irradiance$PAR[2662:3814] #subset by seq(as_datetime("2017-11-29 12:00:00"), as_datetime("2018-04-22 12:00:00"), by="hour")
 I_field <- approxfun(x = seq(from = 0, to = 3456, by = 3), y = NOAA_Irradiance_Dredgey1_L2, method = "linear", rule = 2) #irradiance forcing function
 
-###### Temp forcing set-up Judith S 2 #############
+###### Temp set-up Judith S 2 #############
 Dredge_Y1_hobo <- Dredge_Y1_hobo_orig[3:16531,] #cut 2 points in beginning, logger not yet in water
 DredgeT_hourly <- ceiling_date(Dredge_Y1_hobo$DateTime, unit = "hour") #determine dates to aggregate around
 AvgTempKbyhr <- aggregate(Dredge_Y1_hobo$Temp_K, by=list(DredgeT_hourly), mean) #calculate average hourly temp
@@ -311,10 +330,11 @@ AvgTempKbyhr_sub <- AvgTempKbyhr[676:4132,] #subset
 T_field <- approxfun(x = c(0:3456), y = c(AvgTempKbyhr_sub$x), method = "linear", rule = 2) #the temp forcing function
 T_Dredge2_Y1 <- T_field(0:3456) #for ease of later plotting the temperature forcing
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#Model run (the differential equation solver)
+#### Model runs ####
 sol_Dredge2 <- ode(y = state_Lo, t = times_Lo_Dredge2, func = rates_Lo, parms = params_Lo)
 
+W <- 0.05
+sol_new_Dredge2 <- ode(y = state_Lo, t = times_Lo_Dredge2, func = rates_Lo, parms = new_params_for_model)
 W <- 0.05
 sol_high_Dredge2 <- ode(y = state_Lo, t = times_Lo_Dredge2, func = rates_Lo, parms = high_params_for_model)
 W <- 0.05
@@ -351,62 +371,49 @@ sol_Johansson2002 <- as.data.frame(sol_Johansson2002) #conversion to dataframe f
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ###### Convert DeSolve solutions into data frame for broader plotting use ####
-#conversions to dataframes
-sol_Sled1 <- as.data.frame(sol_Sled1)
-sol_Sled2 <- as.data.frame(sol_Sled2)
-sol_Dredge1 <- as.data.frame(sol_Dredge1)
-sol_Dredge2 <- as.data.frame(sol_Dredge2)
 
-sol_high_Sled1 <- as.data.frame(sol_high_Sled1)
-sol_high_Sled2 <- as.data.frame(sol_high_Sled2)
-sol_high_Dredge1 <- as.data.frame(sol_high_Dredge1)
-sol_high_Dredge2 <- as.data.frame(sol_high_Dredge2)
+clean_ode_sol <- function(sol, date_seq, temp_seq, source){
+  df <- as.data.frame(sol) #convert to data frame
+  df <- df %>% mutate(Temp_C = temp_seq-273.15, #conversion back to Celsius from Kelvin
+                      Date=date_seq,
+                      source=source) #addition of a date variable
+  return(df)
+}
 
-sol_med_Sled1 <- as.data.frame(sol_med_Sled1)
-sol_med_Sled2 <- as.data.frame(sol_med_Sled2)
-sol_med_Dredge1 <- as.data.frame(sol_med_Dredge1)
-sol_med_Dredge2 <- as.data.frame(sol_med_Dredge2)
+sled1_date_seq <- seq(as_datetime("2017-11-1 12:00:00"), as_datetime("2018-04-17 12:00:00"), by="hour")
+sled2_date_seq <- seq(as_datetime("2017-11-29 12:00:00"), as_datetime("2018-04-17 12:00:00"), by="hour")
+dredge1_date_seq<- seq(as_datetime("2017-11-1 12:00:00"), as_datetime("2018-04-22 12:00:00"), by="hour")
+dredge2_date_seq<-seq(as_datetime("2017-11-29 12:00:00"), as_datetime("2018-04-22 12:00:00"), by="hour")
 
-sol_low_Sled1 <- as.data.frame(sol_low_Sled1)
-sol_low_Sled2 <- as.data.frame(sol_Sled2)
-sol_low_Dredge1 <- as.data.frame(sol_low_Dredge1)
-sol_low_Dredge2 <- as.data.frame(sol_low_Dredge2)
+#Example applied to one deSolve solution
+#sol_Sled1 <- clean_ode_sol(sol_Sled1, sled1_date_seq, T_Sled1_Y1)
 
-#addition of a date variable
-sol_Sled1$Date <- seq(as_datetime("2017-11-1 12:00:00"), as_datetime("2018-04-17 12:00:00"), by="hour")
-sol_high_Sled1$Date <- seq(as_datetime("2017-11-1 12:00:00"), as_datetime("2018-04-17 12:00:00"), by="hour")
-sol_med_Sled1$Date <- seq(as_datetime("2017-11-1 12:00:00"), as_datetime("2018-04-17 12:00:00"), by="hour")
-sol_low_Sled1$Date <- seq(as_datetime("2017-11-1 12:00:00"), as_datetime("2018-04-17 12:00:00"), by="hour")
+sled1_sols <- list(orig=sol_Sled1, new=sol_new_Sled1, high=sol_high_Sled1, med=sol_med_Sled1, low=sol_low_Sled1)
+sled2_sols <- list(orig=sol_Sled2, new=sol_new_Sled2, high=sol_high_Sled2, med=sol_med_Sled2, low=sol_low_Sled2)
+dredge1_sols <- list(orig=sol_Dredge1, new=sol_new_Dredge1, high=sol_high_Dredge1, med=sol_med_Dredge1, low=sol_low_Dredge1)
+dredge2_sols <- list(orig=sol_Dredge2, new=sol_new_Dredge2,high=sol_high_Dredge2, med=sol_med_Dredge2, low=sol_low_Dredge2)
 
+sled1_sols<- map(sled1_sols, clean_ode_sol, sled1_date_seq, T_Sled1_Y1, "Point Judith Pond N 1") %>% bind_rows(.id = "params")
+sled2_sols<- map(sled2_sols, clean_ode_sol, sled2_date_seq, T_Sled2_Y1, "Point Judith Pond N 2") %>% bind_rows(.id = "params")
+dredge1_sols<- map(dredge1_sols, clean_ode_sol, dredge1_date_seq, T_Dredge1_Y1, "Point Judith Pond S 1") %>% bind_rows(.id = "params")
 
-sol_Sled2$Date <- seq(as_datetime("2017-11-29 12:00:00"), as_datetime("2018-04-17 12:00:00"), by="hour")
-sol_Dredge1$Date <- seq(as_datetime("2017-11-1 12:00:00"), as_datetime("2018-04-22 12:00:00"), by="hour")
-sol_Dredge2$Date <-seq(as_datetime("2017-11-29 12:00:00"), as_datetime("2018-04-22 12:00:00"), by="hour")
-
-#conversion back to Celsius from Kelvin
-sol_Sled1$Temp_C <- T_Sled1_Y1 - 273.15
-
-sol_high_Sled1$Temp_C <- T_Sled1_Y1 - 273.15
-sol_med_Sled1$Temp_C <- T_Sled1_Y1 - 273.15
-sol_low_Sled1$Temp_C <- T_Sled1_Y1 - 273.15
-
-sol_Sled2$Temp_C <- T_Sled2_Y1 - 273.15
-sol_Dredge1$Temp_C <- T_Dredge1_Y1 - 273.15
-sol_Dredge2$Temp_C <- T_Dredge2_Y1 - 273.15
+dredge2_sols<- map(dredge2_sols, clean_ode_sol, dredge2_date_seq, T_Dredge2_Y1, "Point Judith Pond S 2") %>% bind_rows(.id = "params")
 
 #create source column to prepare for binding all these dataframes together
-sol_Sled1$source <- "Point Judith Pond N 1"
-
-sol_high_Sled1$source <- "Point Judith Pond N 1"
-sol_med_Sled1$source <- "Point Judith Pond N 1"
-sol_low_Sled1$source <- "Point Judith Pond N 1"
-
-sol_Sled2$source <- "Point Judith Pond N 2"
-sol_Dredge1$source <- "Point Judith Pond S 1"
-sol_Dredge2$source <- "Point Judith Pond S 2"
+# sol_Sled1$source <- "Point Judith Pond N 1"
+# sol_high_Sled1$source <- "Point Judith Pond N 1 H"
+# sol_med_Sled1$source <- "Point Judith Pond N 1 M"
+# sol_low_Sled1$source <- "Point Judith Pond N 1 L"
+# sol_Sled2$source <- "Point Judith Pond N 2"
+# sol_Dredge1$source <- "Point Judith Pond S 1"
+# sol_Dredge2$source <- "Point Judith Pond S 2"
 
 #combine all Y1 field data into one dataframe
-sol_all <- rbind(sol_Dredge1, sol_Dredge2, sol_Sled1, sol_Sled2)
+#sol_all <- rbind(sol_Dredge1, sol_Dredge2, sol_Sled1, sol_Sled2)
+sol_all <- rbind(dredge1_sols %>% filter(params=="orig"),
+                 dredge2_sols %>% filter(params=="orig"),
+                 sled1_sols %>% filter(params=="orig"),
+                 sled1_sols %>% filter(params=="orig"))
 
 ##### Model Plots (Fig 3, 6, 8, 9) #####
 #Figure 3: combining all irradiance forcings
