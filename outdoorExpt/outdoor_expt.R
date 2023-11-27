@@ -1,6 +1,6 @@
 #Analysis of outdoor tank sporophyte heat stress growth expt
 #Ruby Krasnow
-#Last updated: Nov 24, 2023
+#Last updated: Nov 27, 2023
 
 library(tidyverse)
 library(patchwork)
@@ -45,7 +45,7 @@ growth_data <- read.csv("~/Downloads/MBL_SES/outdoorExpt/growth.csv") %>%
          heat_test_f = na_if(Heat.testesd.Female.GP.ID,"#N/A"),
          heat_test_m = na_if(Heat.tested.Male.GP.ID,"#N/A"),
          blade_len = Total.length.of.blade,
-         len = as.double(na_if(Distance.base.of.blade.to.10cm.hole.punch,"--")),
+         hp = as.double(na_if(Distance.base.of.blade.to.10cm.hole.punch,"--")),
          cross = as.factor(Cross),
          trt = as.factor(Treatment),
          rep = as.factor(Rep),
@@ -53,26 +53,39 @@ growth_data <- read.csv("~/Downloads/MBL_SES/outdoorExpt/growth.csv") %>%
          .before = 3, .keep="unused")
 
 growth_data <- growth_data %>% 
-  select(c(date, blade_len,len, cross, trt, rep, id, comments)) %>% complete(date, id)
+  select(c(date, blade_len,hp, cross, trt, rep, id, comments)) %>% #select relevant columns
+  complete(date, id) %>% #make implicit NAs explicit
+  filter(hp>9) #the hole punch was done 10cm from the base, this gets rid of a few instances of potential measuring error or degradation while allowing slight room for error
+  
 
 growth_rates <- growth_data %>% 
   group_by(id) %>% 
-  mutate(growth_tot = (blade_len - lag(blade_len)),
-         growth_hp = if_else(is.na(len),NA,(len-lag(len))),
-         rel_growth_tot = (blade_len - lag(blade_len))/lag(blade_len),
-         rel_growth_hp = if_else(is.na(len),NA,(len-lag(len))/lag(len)),
-         time_elapsed = as.integer(date-lag(date)),
-         growth_rate_tot = (blade_len-lag(blade_len))/time_elapsed,
-         growth_rate_hp = if_else(is.na(len),NA,(len-lag(len))/time_elapsed)) %>% 
-  filter(growth_rate_tot!=-1) %>% na.omit()
+  mutate(
+    net_growth = (blade_len - lag(blade_len)), #difference in total blade length between sampling dates
+    growth_hp = if_else(is.na(hp),NA,(hp-lag(hp))), #difference in distance between hole punch and stipe between sampling dates (provides estimate of growth without effect of erosion from the end of the blade)
+    net_perc_change = (blade_len - lag(blade_len))/lag(blade_len), #percent change in total blade length between sampling dates
+    perc_change_hp = if_else(is.na(hp),NA,(hp-lag(hp))/lag(hp)), #percent change in stipe to hole punch distance between sampling dates
+    time_elapsed = as.integer(date-lag(date)), #days between sampling events
+    growth_rate_tot = (blade_len-lag(blade_len))/time_elapsed, #growth rate of overall blade, in cm/day
+    growth_rate_hp = if_else(is.na(hp),NA,(hp-lag(hp))/time_elapsed), #growth rate near meristem, in cm/day
+     rgr=((log(hp)-log(lag(hp)))/time_elapsed)*100) %>% #relative growth rate, in % per day
+    na.omit() # %>% filter(growth_rate_tot!=-1)
 
 
-growth_rates %>% mutate(diff = growth_tot-growth_hp) %>% 
-  ungroup() %>% summarize(mean(diff), sd(diff))
+growth_rates %>% mutate(diff = net_growth-growth_hp) %>% 
+  ungroup() %>% summarize(mean(diff, na.rm=TRUE), sd(diff, na.rm=TRUE))
 
-growth_rates <- growth_rates %>% mutate(diff = growth_tot-growth_hp,
+growth_rates <- growth_rates %>% mutate(diff = net_growth-growth_hp,
                                                flag_diff = (diff > 2),
-                                        big_loss = (growth_hp < -1))
+                                        big_loss = (growth_hp < -2))
+
+mean(growth_rates$blade_len) #in cm
+mean(growth_rates$hp) #in cm
+mean(growth_rates$net_perc_change) #as % inc.
+mean(growth_rates$perc_change_hp) #as % inc.
+mean(growth_rates$growth_rate_tot) #in cm/day
+mean(growth_rates$growth_rate_hp) #in cm/day
+mean(growth_rates$rgr) #in %/day
 
 sum(growth_rates$flag_diff)
 sum(growth_rates$big_loss)
@@ -90,7 +103,7 @@ mean_growth_by_cross_ctrl <- growth_rates_no_flags %>%
 mean_growth_by_cross_stress <- growth_rates_no_flags %>% 
   filter(trt!="A") %>%
   ungroup() %>% group_by(cross) %>% 
-  summarise(gr_hp=mean(rel_growth_hp)) %>% 
+  summarise(gr_hp=mean(perc_change_hp)) %>% 
   arrange(-gr_hp) %>% 
   mutate(cross = fct_drop(cross))
 
@@ -404,7 +417,3 @@ params<-data.frame(curve=c("Venolia", "Refit", "High", "Med", "Low"),
            T_H=c(T_H, new_T_H, high_T_H, med_T_H, low_T_H),
            T_AH = c(T_AH, new_T_AH, high_T_AH, med_T_AH, low_T_AH)) %>% 
   mutate(T_L=T_L, T_AL=T_AL, T_0=T_0)
-
-
-#Model runs for north line 1
-#sol_N1_high <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = params_Lo)
