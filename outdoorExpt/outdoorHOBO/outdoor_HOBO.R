@@ -9,6 +9,7 @@ library(clipr)
 library(tseries)
 library(zoo)
 
+### Import data ####
 control_files <- list.files("./outdoorExpt/outdoorHOBO/outdoor_HOBO_data/highN_control", full.names = TRUE)
 control <- suppressWarnings(read_csv(control_files,
               col_select = c("num","dateTime", "temp","lux"),
@@ -33,9 +34,9 @@ highN<-suppressWarnings(read_csv(highN_files,
   mutate(datetime = parse_date_time(dateTime, "mdy HM"),
          trt="highN", .keep="unused")
 
-dat_full <- bind_rows(control, lowN, highN) %>% 
-  select(c(trt, datetime,temp, lux)) %>% 
-  mutate(trt = as.factor(trt))
+dat_full <- bind_rows(control, lowN, highN) %>% #combine dataframes
+  select(c(trt, datetime,temp, lux)) %>% #select relevant columns
+  mutate(trt = as.factor(trt)) #convert treatment to factor
 
 ggplot(data=dat_full %>% filter(temp<30))+
   geom_line(aes(x=datetime, y=temp, color=trt))+
@@ -49,10 +50,11 @@ ggplot(data=dat_full %>% filter(temp<30))+
   scale_color_hue(labels = c("Control + N", "Heat + N", "Heat"))+
   geom_vline(xintercept = c(as_datetime("2023-06-19"), as_datetime("2023-06-30")))
 
-all_roll <- dat_full %>% 
+all_hourly <- dat_full %>% 
   mutate(date = round_date(datetime, "hour")) %>% 
   group_by(trt, date) %>% 
-  summarize(temp_roll = mean(temp, na.rm=TRUE)) %>% 
+  summarize(temp_hourly = mean(temp, na.rm=TRUE),
+            PAR_hourly = mean(lux*0.0185, na.rm=TRUE)) %>% 
   filter(date > ymd_hm("2023-06-11 23:59") & date < ymd_hm("2023-07-18 23:59"))
 
 week1 <- interval(ymd_hm("2023-06-11 23:59"), ymd("2023-06-20"))
@@ -61,11 +63,11 @@ week3 <- interval(ymd("2023-06-27"), ymd("2023-07-04")) #7/05 growth reflects We
 week4 <- interval(ymd("2023-07-04"), ymd("2023-07-11")) #7/13 growth reflects Week 4
 week5 <- interval(ymd("2023-07-11"), ymd_hm("2023-07-18 23:59"))
 
-all_roll %>% #week 2
+all_hourly %>% #week 2
   filter(date %within% week2) %>% 
-  filter(trt!="control")%>% summarise(mean(temp_roll)) #19.9
+  filter(trt!="control")%>% summarise(mean(temp_hourly)) #highN = 19.9
 
-all_roll <- all_roll %>% mutate(week = case_when(
+all_hourly <- all_hourly %>% mutate(week = case_when(
   date %within% week1 ~ 1,
   date %within% week2 ~ 2,
   date %within% week3 ~ 3,
@@ -74,13 +76,13 @@ all_roll <- all_roll %>% mutate(week = case_when(
 ))
 
 
-weekly_means<- all_roll %>% group_by(week, trt) %>% 
-  summarise(mean = mean(temp_roll)) %>% 
+weekly_means <- all_hourly %>% group_by(week, trt) %>% 
+  summarise(mean = mean(temp_hourly)) %>% 
   mutate(mean = round(mean,2)) %>% arrange(trt)
 
-ggplot(data=all_roll %>% filter(date < ymd("2023-07-18")))+
+ggplot(data=all_hourly %>% filter(date < ymd("2023-07-18")))+
   geom_vline(xintercept = c(as_datetime(c("2023-06-12","2023-06-20","2023-06-27","2023-07-04","2023-07-11","2023-07-18"))), linetype="dashed")+
-  geom_line(aes(x=date, y=temp_roll, color=trt))+
+  geom_line(aes(x=date, y=temp_hourly, color=trt))+
   scale_x_datetime(breaks="7 days", date_labels = "%b %d")+
   labs(x=NULL, y="Temperature (°C)", color="Treatment")+
   theme_light()+
@@ -90,9 +92,22 @@ ggplot(data=all_roll %>% filter(date < ymd("2023-07-18")))+
         axis.title = element_text(size=13), axis.text = element_text(size=14))+
   scale_color_hue(labels = c("Control + N", "Heat + N", "Heat"))
   
-weekly_means_all <- all_roll %>% group_by(week, trt) %>% 
-  summarise(mean_temp = mean(temp_roll)) %>% 
+weekly_means_all <- all_hourly %>% group_by(week, trt) %>% 
+  summarise(mean_temp = mean(temp_hourly)) %>% 
   mutate(mean_temp = round(mean_temp,2)) %>% 
   arrange(trt)
 
 weekly_means_all <- bind_rows(list(high=weekly_means_all, med=weekly_means_all, low=weekly_means_all), .id="stress_group")
+
+ggplot(data=all_hourly %>% filter(date < ymd("2023-07-18"), PAR_hourly<20) %>% group_by(date) %>% summarise(PAR=mean(PAR_hourly)))+
+  geom_vline(xintercept = c(as_datetime(c("2023-06-12","2023-06-20","2023-06-27","2023-07-04","2023-07-11","2023-07-18"))), linetype="dashed")+
+  geom_line(aes(x=date, y=PAR*60*60/10^4.25))+
+  scale_x_datetime(breaks="7 days", date_labels = "%b %d")+
+  labs(x=NULL, y="PAR", color="Treatment")+
+  theme_light()+
+  theme(text = element_text(size=14),
+        axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0)),
+        axis.title.x = element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)),
+        axis.title = element_text(size=13), axis.text = element_text(size=14))+
+  scale_color_hue(labels = c("Control + N", "Heat + N", "Heat"))
+

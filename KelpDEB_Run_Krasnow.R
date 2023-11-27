@@ -14,9 +14,9 @@ library(deSolve)
 library(tidyverse)
 library(lubridate)
 library(gridExtra)
-library(gdata)
+#library(gdata)
+#library(pracma)
 library(Metrics)
-library(pracma)
 library(patchwork)
 
 #Required for model runs
@@ -24,10 +24,6 @@ source("SolveR_R.R")
 source("KelpDEB_model.R")
 source("./outdoorExpt/outdoorHOBO/outdoor_HOBO.R")
 source("./outdoorExpt/outdoor_expt.R")
-
-#Required for Calibration Code
-source("N_uptake_Calibration.R")
-source("Photosynthesis_Calibration.R")
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ##### Minerals and Organics Section #####
@@ -136,9 +132,6 @@ state_Lo <- c(m_EC = 0.002, #0.1, #mol C/molM_V  #Reserve density of C reserve (
               m_EN = 0.01, #mol N/molM_V #Reserve density of N reserve (initial mass of N reserve per initial mass of structure)
               M_V = 0.05/(w_V+0.01*w_EN+0.002*w_EC)) #molM_V #initial mass of structure
 
-state_Johansson <- c(m_EC = 0.3, #mol C/molM_V  #Reserve density of C reserve (initial mass of C reserve per initial mass of structure)
-                     m_EN = 0.01, #mol N/molM_V #Reserve density of N reserve (initial mass of N reserve per initial mass of structure)
-                     M_V = 0.005/(w_V+0.01*w_EN+0.3*w_EC)) #molM_V #initial mass of structure
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ####### Time steps #######
 #(First number of time step, last number of time step, interval to step)
@@ -170,6 +163,13 @@ names(WSA2_Y1)[1] <- "Site" #only necessary for some computers running this code
 Sled_WSA <- filter(WSA2_Y1, Site == "Sled") #filter for Sled site
 Dredge_WSA <- filter(WSA2_Y1, Site == "Dredge") #filter for Dredge site
 
+# Judith N
+N_sled <- Sled_WSA[c("Date","NitrateNitrite_uM")] #subset
+N_sled$NitrateNitrite_uM <- N_sled$NitrateNitrite_uM/1000000
+
+# Judith S
+N_dredge <- Dredge_WSA[c("Date","NitrateNitrite_uM")] #new dataframe with the relevant columns
+N_dredge$NitrateNitrite_uM <- N_dredge$NitrateNitrite_uM/1000000 #convert from micromoles/L to moles/L
 
 ##### DIC forcing set-up ###########
 DIC <- read.csv("Ninigret_EPA_DIC.csv", header = TRUE, fileEncoding="UTF-8-BOM") #Import Ninigret DIC data
@@ -186,23 +186,20 @@ Dredge_Y1_hobo_orig <- read.csv("Dredge_Y1_hobo.csv", header = TRUE, fileEncodin
 Dredge_Y1_hobo_orig$DateTime <- mdy_hms(Dredge_Y1_hobo_orig$Date_Time) #convert time field
 Dredge_Y1_hobo_orig$Temp_K <- Dredge_Y1_hobo_orig$Temp_C+273.15 #create column with temp in K
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ### FIELD DATA MODEL RUNS ####
 
 ### Judith N (sled) line 1 ####
 W <- 0.05 #inital biomass for conversions (cannot put in initial conditions)
 
-# N forcing set-up Judith N 1
-N <- Sled_WSA[c("Date","NitrateNitrite_uM")] #subset
-N$NitrateNitrite_uM <- N$NitrateNitrite_uM/1000000
 #Converted to hourly by multiply by 24
-N_field <- approxfun(x = c(161*24, 139*24, 105*24, 0, 28*24, 84*24, 172*24), y = N$NitrateNitrite_uM, method = "linear", rule = 2) #N forcing function
+N_field <- approxfun(x = c(161*24, 139*24, 105*24, 0, 28*24, 84*24, 172*24), y = N_sled$NitrateNitrite_uM, method = "linear", rule = 2) #N forcing function
 
-##### Irradiance set-up Judith N 1 ####
+###### Irradiance set-up Judith N 1 #######
 NOAA_Irradiance_Sledy1 <-  NOAA_Irradiance$PAR[2438:3774] # subset based on as_datetime("2017-11-1 12:00:00"), as_datetime("2018-04-17 12:00:00")
 I_field <- approxfun(x = seq(from = 0, to = 4008, by = 3), y = NOAA_Irradiance_Sledy1, method = "linear", rule = 2) #irradiance forcing
 
-##### Temp set-up Judith N 1 #############
+######  Temp set-up Judith N 1 #############
 Sled_Y1_hobotemp <- Sled_Y1_hobotemp_orig[14:16049,] #subset
 SledT_hourly <- ceiling_date(Sled_Y1_hobotemp$DateTime, unit = "hour") #set the values to aggregate around
 AvgTempKbyhr <- aggregate(Sled_Y1_hobotemp$Temp_K, by=list(SledT_hourly), mean) #calculate average hourly temp
@@ -217,9 +214,9 @@ AvgTempKbyhr_part2 <- AvgTempKbyhr$x[860:4009] #later part of original temp file
 T_field <- approxfun(x = c(0:4008), y = c(AvgTempKbyhr_part1, fd, AvgTempKbyhr_part2), method = "linear", rule = 2) #the temp forcing function
 T_Sled1_Y1 <- T_field(0:4008) #saving the forcing this way for ease of later visualization
 
-#### Model runs ####
+###### Model runs standard ######
 # (the differential equation solver)
-#T_field <- approxfun(x = c(0:4008), y = c(AvgTempKbyhr_part1+2, fd+2, AvgTempKbyhr_part2+2), method = "linear", rule = 2)
+#T_field <- approxfun(x = c(0:4008), y = c(AvgTempKbyhr_part1+2, fd, AvgTempKbyhr_part2+2), method = "linear", rule = 2)
 
 sol_Sled1 <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = params_Lo)
 
@@ -232,23 +229,35 @@ sol_med_Sled1 <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = 
 W <- 0.05
 sol_low_Sled1 <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = low_params_for_model)
 
+
+###### Model runs +2°C ######
+T_field <- approxfun(x = c(0:4008), y = c(AvgTempKbyhr_part1+2, fd+2, AvgTempKbyhr_part2+2), method = "linear", rule = 2)
+T_Sled1_plus2 <- T_field(0:4008) #saving the forcing this way for ease of later visualization
+
+W <- 0.05
+sol_Sled1_plus2 <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = params_Lo)
+W <- 0.05
+sol_new_Sled1_plus2 <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = new_params_for_model)
+W <- 0.05
+sol_high_Sled1_plus2 <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = high_params_for_model)
+W <- 0.05
+sol_med_Sled1_plus2 <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = med_params_for_model)
+W <- 0.05
+sol_low_Sled1_plus2 <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = low_params_for_model)
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Setting up the forcing functions with field data for
 ### Judith N (sled) line 2 ####
 W <- 0.05 #inital biomass for conversions (cannot put in initial conditions)
 
 # N forcing set-up Judith N 2 #
-N <- Sled_WSA[c("Date","NitrateNitrite_uM")] #create a dataframe with just the relevant collums
-N$NitrateNitrite_uM <- N$NitrateNitrite_uM/1000000 #convert from micromoles/L to moles/L
-#multiplying by 24 to set as hourly
-N_field <- approxfun(x = c(133*24, 111*24, 77*24, -28*24, 0, 56*24, 144*24), y = N$NitrateNitrite_uM, method = "linear", rule = 2) #N forcing function
-###### DIC forcing set-up ###########
+N_field <- approxfun(x = c(133*24, 111*24, 77*24, -28*24, 0, 56*24, 144*24), y = N_sled$NitrateNitrite_uM, method = "linear", rule = 2) #N forcing function
 
-###### NOAA Irradiance forcing set-up Judith N 2 ####
+###### Irradiance set-up Judith N 2 ####
 NOAA_Irradiance_Sledy1_L2 <-  NOAA_Irradiance$PAR[2662:3774] #subset by seq(as_datetime("2017-11-29 12:00:00"), as_datetime("2018-04-17 12:00:00"), by="hour")
 I_field <- approxfun(x = seq(from = 0, to = 3336, by = 3), y = NOAA_Irradiance_Sledy1_L2, method = "linear", rule = 2) #irradiance forcing function
 
-###### Temp forcing set-Up Judith N 2 #############
+###### Temp set-Up Judith N 2 #############
 Sled_Y1_hobotemp <- Sled_Y1_hobotemp_orig[6:16051,] #subset
 SledT_hourly <- ceiling_date(Sled_Y1_hobotemp$DateTime, unit = "hour") #set values to aggregate around
 AvgTempKbyhr <- aggregate(Sled_Y1_hobotemp$Temp_K, by=list(SledT_hourly), mean) #calculate average hourly temp
@@ -275,19 +284,15 @@ sol_low_Sled2 <- ode(y = state_Lo, t = times_Lo_Sled2, func = rates_Lo, parms = 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Setting up the forcing functions with field data for
 ### Judith S (dredge) line 1 ####
-W <- 0.05 #inital biomass for conversions (cannot put in initial conditions)
 
-###### N forcing set-up Judith S 1 ##############
-N <- Dredge_WSA[c("Date","NitrateNitrite_uM")] #new dataframe with the relevant collumns
-N$NitrateNitrite_uM <- N$NitrateNitrite_uM/1000000 #convert from micromoles/L to moles/L
-#multipling by 24 to take from daily to hourly
-N_field <- approxfun(x = c(139*24, 161*24, 84*24, 0, 105*24), y = N$NitrateNitrite_uM, method = "linear", rule = 2) #N forcing function
+# N forcing set-up Judith S 1 #
+N_field <- approxfun(x = c(139*24, 161*24, 84*24, 0, 105*24), y = N_dredge$NitrateNitrite_uM, method = "linear", rule = 2)
 
-###### NOAA Irradiance forcing set-up Judith S 1 ####
+###### Irradiance set-up Judith S 1 ####
 NOAA_Irradiance_Dredgey1 <-  NOAA_Irradiance$PAR[2438:3814] #subset by 11/1/17 to 2018-04-22 12:00:00
 I_field <- approxfun(x = seq(from = 0, to = 4128, by = 3), y = NOAA_Irradiance_Dredgey1, method = "linear", rule = 2) #irradiance forcing function
 
-###### Temp forcing set-Up Judith S 1 #############
+###### Temp set-Up Judith S 1 #############
 Dredge_Y1_hobo <- Dredge_Y1_hobo_orig[3:16531,] #subset
 DredgeT_hourly <- ceiling_date(Dredge_Y1_hobo$DateTime, unit = "hour") #set values to aggregate around
 AvgTempKbyhr <- aggregate(Dredge_Y1_hobo$Temp_K, by=list(DredgeT_hourly), mean) #calculate average hourly temp
@@ -296,8 +301,9 @@ T_field <- approxfun(x = c(0:4128), y = AvgTempKbyhr$x, method = "linear", rule 
 T_Dredge1_Y1 <- T_field(0:4128) #for ease in later plotting of the forcing
 
 #### Model runs ####
-sol_Dredge1 <- ode(y = state_Lo, t = times_Lo_Dredge1, func = rates_Lo, parms = params_Lo)
 
+W <- 0.05 #initial biomass for conversions (cannot put in initial conditions)
+sol_Dredge1 <- ode(y = state_Lo, t = times_Lo_Dredge1, func = rates_Lo, parms = params_Lo)
 W <- 0.05
 sol_new_Dredge1 <- ode(y = state_Lo, t = times_Lo_Dredge1, func = rates_Lo, parms = new_params_for_model)
 W <- 0.05
@@ -310,15 +316,11 @@ sol_low_Dredge1 <- ode(y = state_Lo, t = times_Lo_Dredge1, func = rates_Lo, parm
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Setting up the forcing functions with field data for
 ### Judith S line 2 ####
-W <- 0.05 #inital biomass for conversions (cannot put in initial conditions)
 
 # N forcing set-up Judith S 2
-N <- Dredge_WSA[c("Date","NitrateNitrite_uM")] #create new dataframe with just the relevant collumns
-N$NitrateNitrite_uM <- N$NitrateNitrite_uM/1000000 #convert from micromoles/L to moles/L
-#multiplied by 24 to convert from daily to hourly
-N_field <- approxfun(x = c(111*24, 133*24, 56*24, -28*24, 77*24), y = N$NitrateNitrite_uM, method = "linear", rule = 2) #N forcing function
+N_field <- approxfun(x = c(111*24, 133*24, 56*24, -28*24, 77*24), y = N_dredge$NitrateNitrite_uM, method = "linear", rule = 2) #N forcing function
 
-###### NOAA Irradiance set-up Judith S 2 ####
+###### Irradiance set-up Judith S 2 ####
 NOAA_Irradiance_Dredgey1_L2 <-  NOAA_Irradiance$PAR[2662:3814] #subset by seq(as_datetime("2017-11-29 12:00:00"), as_datetime("2018-04-22 12:00:00"), by="hour")
 I_field <- approxfun(x = seq(from = 0, to = 3456, by = 3), y = NOAA_Irradiance_Dredgey1_L2, method = "linear", rule = 2) #irradiance forcing function
 
@@ -331,8 +333,9 @@ T_field <- approxfun(x = c(0:3456), y = c(AvgTempKbyhr_sub$x), method = "linear"
 T_Dredge2_Y1 <- T_field(0:3456) #for ease of later plotting the temperature forcing
 
 #### Model runs ####
-sol_Dredge2 <- ode(y = state_Lo, t = times_Lo_Dredge2, func = rates_Lo, parms = params_Lo)
 
+W <- 0.05 #initial biomass for conversions (cannot put in initial conditions)
+sol_Dredge2 <- ode(y = state_Lo, t = times_Lo_Dredge2, func = rates_Lo, parms = params_Lo)
 W <- 0.05
 sol_new_Dredge2 <- ode(y = state_Lo, t = times_Lo_Dredge2, func = rates_Lo, parms = new_params_for_model)
 W <- 0.05
@@ -342,33 +345,6 @@ sol_med_Dredge2 <- ode(y = state_Lo, t = times_Lo_Dredge2, func = rates_Lo, parm
 W <- 0.05
 sol_low_Dredge2 <- ode(y = state_Lo, t = times_Lo_Dredge2, func = rates_Lo, parms = low_params_for_model)
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-### END FIELD DATA, START LITERATURE DATA FOR CALIBRATION ####
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#Setting up the forcing functions for Espinoza and Chapman (1983) nitrogen uptake #9C (282.15 K)
-
-Nmax <- 73.1221719/1000000 #M
-T_dat <- 9 #C (conversion in Nuptake function to K)
-
-#Model run (the differential equation solver)
-sol_EspinozaChapman1983_N_9 <- Nuptake(params_Lo, T_dat, Nmax, w_EN) #function from N_uptake_Calibration.R code
-sol_EspinozaChapman1983_N_9 <- as.data.frame(sol_EspinozaChapman1983_N_9) #conversion to dataframe for later use
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#Setting up the forcing functions for Espinoza and Chapman (1983) nitrogen uptake #18C (282.15 K)
-
-Nmax <- 76.9543147/1000000 #M
-T_dat <- 18 #C (conversion in Nuptake function to K)
-
-#Model run (the differential equation solver)
-sol_EspinozaChapman1983_N_18 <- Nuptake(params_Lo, T_dat, Nmax, w_EN) #function from N_uptake_Calibration.R code
-sol_EspinozaChapman1983_N_18 <- as.data.frame(sol_EspinozaChapman1983_N_18) #conversion to dataframe for later use
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#Photosynthesis model calibration
-T_dat <- 14 #C (maintained for entire experiment)
-I_max <- 3233205 #micromol photons m-2 h-1
-sol_Johansson2002 <- Photosynthesis(params_Lo, state_Johansson, w_V, w_EN, w_EC, w_O2, T_dat, I_max) #function from Photosynthesis_Calibration.R
-sol_Johansson2002 <- as.data.frame(sol_Johansson2002) #conversion to dataframe for later use
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ###### Convert DeSolve solutions into data frame for broader plotting use ####
 
@@ -393,27 +369,21 @@ sled2_sols <- list(orig=sol_Sled2, new=sol_new_Sled2, high=sol_high_Sled2, med=s
 dredge1_sols <- list(orig=sol_Dredge1, new=sol_new_Dredge1, high=sol_high_Dredge1, med=sol_med_Dredge1, low=sol_low_Dredge1)
 dredge2_sols <- list(orig=sol_Dredge2, new=sol_new_Dredge2,high=sol_high_Dredge2, med=sol_med_Dredge2, low=sol_low_Dredge2)
 
+sled1_sols_plus2 <- list(orig=sol_Sled1_plus2, new=sol_new_Sled1_plus2, high=sol_high_Sled1_plus2, med=sol_med_Sled1_plus2, low=sol_low_Sled1_plus2)
+
 sled1_sols<- map(sled1_sols, clean_ode_sol, sled1_date_seq, T_Sled1_Y1, "Point Judith Pond N 1") %>% bind_rows(.id = "params")
 sled2_sols<- map(sled2_sols, clean_ode_sol, sled2_date_seq, T_Sled2_Y1, "Point Judith Pond N 2") %>% bind_rows(.id = "params")
 dredge1_sols<- map(dredge1_sols, clean_ode_sol, dredge1_date_seq, T_Dredge1_Y1, "Point Judith Pond S 1") %>% bind_rows(.id = "params")
-
 dredge2_sols<- map(dredge2_sols, clean_ode_sol, dredge2_date_seq, T_Dredge2_Y1, "Point Judith Pond S 2") %>% bind_rows(.id = "params")
 
-#create source column to prepare for binding all these dataframes together
-# sol_Sled1$source <- "Point Judith Pond N 1"
-# sol_high_Sled1$source <- "Point Judith Pond N 1 H"
-# sol_med_Sled1$source <- "Point Judith Pond N 1 M"
-# sol_low_Sled1$source <- "Point Judith Pond N 1 L"
-# sol_Sled2$source <- "Point Judith Pond N 2"
-# sol_Dredge1$source <- "Point Judith Pond S 1"
-# sol_Dredge2$source <- "Point Judith Pond S 2"
+sled1_sols_plus2<- map(sled1_sols_plus2, clean_ode_sol, sled1_date_seq, T_Sled1_plus2, "Point Judith Pond N 1") %>% bind_rows(.id = "params")
 
-#combine all Y1 field data into one dataframe
+#combine all original field data into one dataframe
 #sol_all <- rbind(sol_Dredge1, sol_Dredge2, sol_Sled1, sol_Sled2)
 sol_all <- rbind(dredge1_sols %>% filter(params=="orig"),
                  dredge2_sols %>% filter(params=="orig"),
                  sled1_sols %>% filter(params=="orig"),
-                 sled1_sols %>% filter(params=="orig"))
+                 sled2_sols %>% filter(params=="orig"))
 
 ##### Model Plots (Fig 3, 6, 8, 9) #####
 #Figure 3: combining all irradiance forcings
@@ -577,73 +547,6 @@ PJN1_2 <- ggplot() +
 
 PJS1_2+PJN1_2
 
-#### Literature data for comparison/Calibration ####
-###### Nitrate uptake #######
-#Espinoza and Chapman (1983) and Ahn et al. (1998)
-EC1983_9C_Nuptake_StM <- read.csv("EspinozaChapman1983_Nuptake_9C_StMargaretsBay.csv", header = TRUE, fileEncoding="UTF-8-BOM")
-EC1983_18C_Nuptake_StM <- read.csv("EspinozaChapman1983_Nuptake_18C_StMargaretsBay.csv", header = TRUE, fileEncoding="UTF-8-BOM")
 
-#conversions 9C
-EC1983_9C_Nuptake_StM$N <- EC1983_9C_Nuptake_StM$ResidualNitrateConcentration
-EC1983_9C_Nuptake_StM$N <- round(EC1983_9C_Nuptake_StM$N, digits = 2)
-EC1983_9C_Nuptake_StM$N <- EC1983_9C_Nuptake_StM$N/1000000 #microM to M
-EC1983_9C_Nuptake_StM$NuptakeRate <- EC1983_9C_Nuptake_StM$NuptakeRate/1000000/w_EN #convert micro g N gDW–1 h–1 to mol N gDW–1 h–1
-
-#conversions 18C
-EC1983_18C_Nuptake_StM$N <- EC1983_18C_Nuptake_StM$ResidualNitrateConcentration
-EC1983_18C_Nuptake_StM$N <- round(EC1983_18C_Nuptake_StM$N, digits = 2)
-EC1983_18C_Nuptake_StM$N <- EC1983_18C_Nuptake_StM$N/1000000 #microM to M
-EC1983_18C_Nuptake_StM$NuptakeRate <- EC1983_18C_Nuptake_StM$NuptakeRate/1000000/w_EN
-
-#testing rounding
-sol_EspinozaChapman1983_N_9$N <- round(sol_EspinozaChapman1983_N_9$N*1000000, digits = 3)/1000000
-sol_EspinozaChapman1983_N_18$N <- round(sol_EspinozaChapman1983_N_18$N*1000000, digits = 3)/1000000
-
-N_calibration <- ggplot() +
-  geom_line(data = sol_EspinozaChapman1983_N_9, mapping = aes(x = N*1000000, y = J_EN_A*1000000, color = "Model of Espinoza and Chapman (1983) at 9°C")) +
-  geom_line(data = sol_EspinozaChapman1983_N_18, mapping = aes(x = N*1000000, y = J_EN_A*1000000, color = "Model of Espinoza and Chapman (1983) at 18°C")) +
-  geom_point(data = EC1983_9C_Nuptake_StM, mapping = aes(x = N*1000000, y = NuptakeRate*1000000, color="Espinoza and Chapman (1983), St. Margaret's Bay, 9°C"), size=3) +
-  geom_point(data = EC1983_18C_Nuptake_StM, mapping = aes(x = N*1000000, y = NuptakeRate*1000000, color="Espinoza and Chapman (1983), St. Margaret's Bay, 18°C"), shape = 23, fill = 'grey', size=3) +
-  xlim(0, 80) +
-  scale_color_manual(values = c("gray60", "gray0", "gray60", "gray0")) +
-  theme_bw() +
-  theme(axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_blank()) +
-  theme(legend.position="none") +
-  theme(axis.text=element_text(size=12), axis.title=element_text(size=16)) +
-  labs(x= bquote('N Concentration (μmol' ~NO[3]^{"-"}~ 'L'^"-1"*')'), y = bquote('N uptake (μmol' ~NO[3]^{"-"}~ 'g DW'^"-1"*' h'^"-1"*')')) +
-  ggtitle('a)')
-
-#Error calculations
-er9 <- merge(EC1983_9C_Nuptake_StM, sol_EspinozaChapman1983_N_9, all.x = TRUE)
-rmse(er9$NuptakeRate, er9$J_EN_A) #3.683799e-07
-
-er18 <- merge(EC1983_18C_Nuptake_StM, sol_EspinozaChapman1983_N_18, all.x = TRUE)
-rmse(er18$NuptakeRate, er18$J_EN_A) #2.606024e-07
-
-######## Photosynthesis related ####
-#Johansson2002
-Johansson2002 <- read.csv("Johansson2002.csv", header = TRUE, fileEncoding="UTF-8-BOM")
-#conversions
-Johansson2002$Irradiance <- Johansson2002$Irradiance*3600*1e-6 #micromol photons m-2 s-1 to mol photons m-2 h-1
-Johansson2002$O2production <- Johansson2002$O2production/1e+6*32/1000*3600 #micromol O2 kg DW-1 s-1 to g O2/g/h
-Johansson2002$O2productionSHIFT <- Johansson2002$O2production + 0.001720976 #from net to gross
-
-Photosynthesis_calibration <- ggplot(data = Johansson2002) +
-  geom_line(data = sol_Johansson2002, mapping = aes(x = I, y = J_O*1000)) +
-  geom_point(mapping = aes(x = Irradiance, y = O2productionSHIFT*1000), size = 3) +
-  scale_color_grey() +
-  theme_bw() +
-  theme(axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_blank()) +
-  theme(axis.text=element_text(size=12), axis.title=element_text(size=16)) +
-  labs(x= bquote('Irradiance (mol γ m'^"-2"*' h'^"-1)"), y = bquote('Oxygen production (mg' ~O[2]~ 'g DW'^"-1"*' h'^"-1"*')')) +
-  ggtitle('b)')
-
-#error calculations
-Johansson2002$I <- round(Johansson2002$Irradiance, digits = 6)
-sol_Johansson2002$I <- round(sol_Johansson2002$I, digits = 6)
-erPhoto <- merge(Johansson2002, sol_Johansson2002, all.x = TRUE)
-rmse(erPhoto$O2productionSHIFT, erPhoto$J_O)
-
-######## Combine calibration plot (Figure 5) #######
-#Figure 5
-grid.arrange(N_calibration, Photosynthesis_calibration, ncol=2)
+library(NCmisc)
+list.functions.in.file("KelpDEB_Run_Krasnow.R")
