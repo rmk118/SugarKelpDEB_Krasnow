@@ -197,3 +197,107 @@ try(nlsLM(formula=std_rate ~ exp((T_a/T_0)-(T_a/temp_K)) *
             ((1+exp((T_al/temp_K)-(T_al/T_l))+exp((T_ah/T_h)-(T_ah/temp_K)))^-1),
           start=list(T_a=T_a, T_h=T_h, T_ah=T_ah, T_al=T_al),
           data = lit_data))
+
+ggstatsplot::ggbetweenstats(unh_stress2,x=ctrl_group, y=std_rgr)
+
+mean(growth_rates$blade_len) #in cm
+mean(growth_rates$hp) #in cm
+mean(growth_rates$net_perc_change) #as % inc.
+mean(growth_rates$perc_change_hp) #as % inc.
+mean(growth_rates$growth_rate_tot) #in cm/day
+mean(growth_rates$growth_rate_hp) #in cm/day
+mean(growth_rates$rgr) #in %/day
+
+mean(growth_rates_no_flags$blade_len) #in cm
+mean(growth_rates_no_flags$hp) #in cm
+mean(growth_rates_no_flags$net_perc_change) #as % inc.
+mean(growth_rates_no_flags$perc_change_hp) #as % inc.
+mean(growth_rates_no_flags$growth_rate_tot) #in cm/day
+mean(growth_rates_no_flags$growth_rate_hp) #in cm/day
+mean(growth_rates_no_flags$rgr) #in %/day
+
+### CONTROL PLOT MEANS ###
+ggplot()+
+  #geom_line(data=stress_groups, aes(x=temp, y=std_rate, color=level, linetype=type),linewidth=1.1)+
+  geom_line(data=ctrl_groups, aes(x=temp, y=std_rate, color=level),linewidth=1.1)+
+  theme_classic()+
+  scale_x_continuous(breaks = seq(-5,35,5))+
+  #scale_color_manual(values = c("#dd4124", "#edd746",'#0f85a0'))+
+  labs(x="Temperature (°C)", y="Standardized rate", shape=NULL,color=NULL, linetype=NULL, fill=NULL)+
+  guides(color = guide_legend(
+    override.aes=list(shape = "-")))+
+  theme(text = element_text(size=25, color="black"),
+        plot.margin = margin(0.4,0.7,0.4,0.4, "cm"),
+        axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
+        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)),
+        axis.title = element_text(size=18), axis.text = element_text(size=18, color="black"),
+        #legend theming
+        legend.margin = margin(-0.7,0, -0.6, 0, "lines"),
+        legend.position = c(.85, .8),
+        legend.text = element_text(size=9, face="bold"),
+        legend.box.background = element_rect(color="black"),
+        legend.box.margin = margin(0.1, 0.3, 0.8, 0.2, "lines"),
+        legend.key.size = unit(0.9, "lines"))
+
+#### Plot: means control points/curves ####
+ctrl_params_plot_means<-ggplot()+
+  geom_point(data=lit_data, aes(x=temp, y=std_rate, shape=paper), size=4)+
+  geom_point(data=unh_ctrl %>% mutate(ctrl_group=factor(ctrl_group, levels=c("low", "med", "high"))), aes(x=temp, y=std_rgr,color=ctrl_group, shape="unh_ctrl"), size=3)+
+  geom_line(data=ctrl_groups %>% filter(type=="means"), aes(x=temp, y=std_rate, color=group),linewidth=1.1)+
+  theme_classic()+
+  scale_x_continuous(breaks = seq(-5,35,5))+
+  scale_shape_manual(values=c(15,18,8,16,17), 
+                     labels=c("Bolton and Lüning (1982)",
+                              "Fortes and Lüning (1980)",
+                              "Davison and Davison (1987)",
+                              "Davison (1987)",
+                              "This study"))+
+  scale_color_manual(values = c("#dd4124", "#edd746",'#0f85a0'))+
+  labs(x="Temperature (°C)", y="Standardized rate", color=NULL, shape=NULL, fill=NULL)+
+  guides(color = guide_legend( 
+    override.aes=list(shape = "-")))+
+  theme(text = element_text(size=15, color="black"),
+        plot.margin = margin(0.4,0.7,0.4,0.4, "cm"),
+        axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
+        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)),
+        axis.title = element_text(size=18), axis.text = element_text(size=18, color="black"))+
+        #legend theming
+        #legend.margin = margin(-0.7,0, -0.6, 0, "lines"),
+        #legend.position = c(.85, .8),
+        #legend.position = "none")+
+        #legend.text = element_text(size=9, face="bold"),
+        #legend.box.background = element_rect(color="black"),
+        #legend.box.margin = margin(0.1, 0.3, 0.8, 0.2, "lines"),
+        #legend.key.size = unit(0.9, "lines"))+
+  ggtitle("Control - means")
+
+(ctrl_params_plot_means+new_params_plot_means)/(control_all_plot+stress_all_plot)
+
+
+nls_fun <- function(df, type, level="high", res="all") {
+  #type can be "ctrl_group" or "stress_group"
+  #res (resolution) can be "all" or "means"
+  #level can be "high", "med", or "low"
+  #df should be a data frame that includes the original literature values, in order to fit the lower portion of the curve, along with the new points you want to include in the nls fitting
+  
+  #relevant_grouping <- paste(type, "group", sep="_")
+  data <- df %>% filter({{type}}=="lit")
+  print(type)
+  print(tibble(data))
+  #nls_res = nlsLM(formula=std_rate ~ exp((T_a/T_0)-(T_a/temp_K)) *
+                   #   (1+exp((T_AL/T_0)-(T_AL/T_L)) + exp((T_ah/T_h)-(T_ah/T_0))) *
+                   #   ((1+exp((T_AL/temp_K)-(T_AL/T_L))+exp((T_ah/T_h)-(T_ah/temp_K)))^-1),
+                   # start=list(T_a=T_a, T_h=T_h, T_ah=T_ah),
+                   # data = data)
+  # temp_T_A <- nls_res$m$getPars()[[1]]
+  # temp_T_H <- nls_res$m$getPars()[[2]]
+  # temp_T_AH <- nls_res$m$getPars()[[3]]
+  
+  # vector_smooth <- exp((temp_T_A/T_0)-(temp_T_A/temp_smooth))*(1+exp((T_AL/T_0)-(T_AL/T_L))+exp((temp_T_AH/temp_T_H)-(temp_T_AH/T_0))) * ((1+exp((T_AL/temp_smooth)-(T_AL/T_L))+exp((temp_T_AH/temp_T_H)-(temp_T_AH/temp_smooth)))^-1)
+  # 
+  # df_out <- data.frame(T_A=temp_T_A, T_H=temp_T_H, T_AH=temp_T_AH,type=type,level=level, res=res, temp_smooth=temp_smooth, std_rate=vector_smooth)
+  
+  # df_out
+}
+
+nls_fun(df=lit_data_plus, stress_group, res="means")
