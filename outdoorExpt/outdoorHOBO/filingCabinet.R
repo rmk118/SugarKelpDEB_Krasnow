@@ -274,30 +274,7 @@ ctrl_params_plot_means<-ggplot()+
 (ctrl_params_plot_means+new_params_plot_means)/(control_all_plot+stress_all_plot)
 
 
-nls_fun <- function(df, type, level="high", res="all") {
-  #type can be "ctrl_group" or "stress_group"
-  #res (resolution) can be "all" or "means"
-  #level can be "high", "med", or "low"
-  #df should be a data frame that includes the original literature values, in order to fit the lower portion of the curve, along with the new points you want to include in the nls fitting
-  
-  #relevant_grouping <- paste(type, "group", sep="_")
-  data <- df %>% filter({{type}}=="lit")
-  print(type)
-  print(tibble(data))
-  #nls_res = nlsLM(formula=std_rate ~ exp((T_a/T_0)-(T_a/temp_K)) *
-                   #   (1+exp((T_AL/T_0)-(T_AL/T_L)) + exp((T_ah/T_h)-(T_ah/T_0))) *
-                   #   ((1+exp((T_AL/temp_K)-(T_AL/T_L))+exp((T_ah/T_h)-(T_ah/temp_K)))^-1),
-                   # start=list(T_a=T_a, T_h=T_h, T_ah=T_ah),
-                   # data = data)
-  # temp_T_A <- nls_res$m$getPars()[[1]]
-  # temp_T_H <- nls_res$m$getPars()[[2]]
-  # temp_T_AH <- nls_res$m$getPars()[[3]]
-  
-  # vector_smooth <- exp((temp_T_A/T_0)-(temp_T_A/temp_smooth))*(1+exp((T_AL/T_0)-(T_AL/T_L))+exp((temp_T_AH/temp_T_H)-(temp_T_AH/T_0))) * ((1+exp((T_AL/temp_smooth)-(T_AL/T_L))+exp((temp_T_AH/temp_T_H)-(temp_T_AH/temp_smooth)))^-1)
-  # 
-  # df_out <- data.frame(T_A=temp_T_A, T_H=temp_T_H, T_AH=temp_T_AH,type=type,level=level, res=res, temp_smooth=temp_smooth, std_rate=vector_smooth)
-  
-  # df_out
-}
 
-nls_fun(df=lit_data_plus, stress_group, res="means")
+
+nls_fun(df=lit_data_plus, type="stress", level="high")$std_rate==high_smooth
+#IT WORKS
