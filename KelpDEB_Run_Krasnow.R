@@ -119,18 +119,23 @@ med_params_for_model <- params_Lo
 low_params_for_model <- params_Lo
 new_params_for_model <- params_Lo
 
-high_params_for_model[c("T_A", "T_H", "T_AH")]<-c(high_T_A, high_T_H,high_T_AH)
-med_params_for_model[c("T_A", "T_H", "T_AH")]<-c(med_T_A, med_T_H,med_T_AH)
-low_params_for_model[c("T_A", "T_H", "T_AH")]<-c(low_T_A, low_T_H,low_T_AH)
+# high_params_for_model[c("T_A", "T_H", "T_AH")]<-c(high_T_A, high_T_H,high_T_AH)
+# med_params_for_model[c("T_A", "T_H", "T_AH")]<-c(med_T_A, med_T_H,med_T_AH)
+# low_params_for_model[c("T_A", "T_H", "T_AH")]<-c(low_T_A, low_T_H,low_T_AH)
+
+high_params_for_model[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="high", res=="means") %>% select(T_A, T_H, T_AH)
+med_params_for_model[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="med", res=="means") %>% select(T_A, T_H, T_AH)
+low_params_for_model[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="low", res=="means") %>% select(T_A, T_H, T_AH)
+
 new_params_for_model[c("T_A", "T_H", "T_AH")]<-c(new_T_A, new_T_H, new_T_AH)
 
-high_params_for_model_all <- params_Lo
-med_params_for_model_all <- params_Lo
-low_params_for_model_all <- params_Lo
+high_params_for_model_rep <- params_Lo
+med_params_for_model_rep <- params_Lo
+low_params_for_model_rep <- params_Lo
 
-high_params_for_model_all[c("T_A", "T_H", "T_AH")]<-c(high_T_A_all, high_T_H_all,high_T_AH_all)
-med_params_for_model_all[c("T_A", "T_H", "T_AH")]<-c(med_T_A_all, med_T_H_all,med_T_AH_all)
-low_params_for_model_all[c("T_A", "T_H", "T_AH")]<-c(low_T_A_all, low_T_H_all,low_T_AH_all)
+high_params_for_model_rep[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="high", res=="all") %>% select(T_A, T_H, T_AH)
+med_params_for_model_rep[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="med", res=="all") %>% select(T_A, T_H, T_AH)
+low_params_for_model_rep[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="low", res=="all") %>% select(T_A, T_H, T_AH)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ####### Initial conditions ############
@@ -238,11 +243,11 @@ W <- 0.05
 sol_low_Sled1 <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = low_params_for_model)
 
 W <- 0.05
-sol_high_Sled1_all <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = high_params_for_model_all)
+sol_high_Sled1_rep <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = high_params_for_model_rep)
 W <- 0.05
-sol_med_Sled1_all <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = med_params_for_model_all)
+sol_med_Sled1_rep <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = med_params_for_model_rep)
 W <- 0.05
-sol_low_Sled1_all <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = low_params_for_model_all)
+sol_low_Sled1_rep <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = low_params_for_model_rep)
 
 
 ###### Model runs +2°C ######
@@ -261,11 +266,11 @@ W <- 0.05
 sol_low_Sled1_plus2 <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = low_params_for_model)
 
 W <- 0.05
-sol_high_Sled1_plus2_all <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = high_params_for_model_all)
+sol_high_Sled1_plus2_rep <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = high_params_for_model_rep)
 W <- 0.05
-sol_med_Sled1_plus2_all <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = med_params_for_model_all)
+sol_med_Sled1_plus2_rep <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = med_params_for_model_rep)
 W <- 0.05
-sol_low_Sled1_plus2_all <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = low_params_for_model_all)
+sol_low_Sled1_plus2_rep <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = low_params_for_model_rep)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Setting up the forcing functions with field data for
@@ -386,13 +391,13 @@ dredge2_date_seq<-seq(as_datetime("2017-11-29 12:00:00"), as_datetime("2018-04-2
 #Example applied to one deSolve solution
 #sol_Sled1 <- clean_ode_sol(sol_Sled1, sled1_date_seq, T_Sled1_Y1)
 
-sled1_sols <- list(orig=sol_Sled1, new=sol_new_Sled1, high=sol_high_Sled1, med=sol_med_Sled1, low=sol_low_Sled1, high_all=sol_high_Sled1_all, med_all=sol_med_Sled1_all, low_all=sol_low_Sled1_all)
+sled1_sols <- list(orig=sol_Sled1, new=sol_new_Sled1, high=sol_high_Sled1, med=sol_med_Sled1, low=sol_low_Sled1, high_rep=sol_high_Sled1_rep, med_rep=sol_med_Sled1_rep, low_rep=sol_low_Sled1_rep)
 
 sled2_sols <- list(orig=sol_Sled2, new=sol_new_Sled2, high=sol_high_Sled2, med=sol_med_Sled2, low=sol_low_Sled2)
 dredge1_sols <- list(orig=sol_Dredge1, new=sol_new_Dredge1, high=sol_high_Dredge1, med=sol_med_Dredge1, low=sol_low_Dredge1)
 dredge2_sols <- list(orig=sol_Dredge2, new=sol_new_Dredge2,high=sol_high_Dredge2, med=sol_med_Dredge2, low=sol_low_Dredge2)
 
-sled1_sols_plus2 <- list(orig=sol_Sled1_plus2, new=sol_new_Sled1_plus2, high=sol_high_Sled1_plus2, med=sol_med_Sled1_plus2, low=sol_low_Sled1_plus2, high_all=sol_high_Sled1_plus2_all, med_all=sol_med_Sled1_plus2_all, low_all=sol_low_Sled1_plus2_all)
+sled1_sols_plus2 <- list(orig=sol_Sled1_plus2, new=sol_new_Sled1_plus2, high=sol_high_Sled1_plus2, med=sol_med_Sled1_plus2, low=sol_low_Sled1_plus2, high_rep=sol_high_Sled1_plus2_rep, med_rep=sol_med_Sled1_plus2_rep, low_rep=sol_low_Sled1_plus2_rep)
 
 sled1_sols<- map(sled1_sols, clean_ode_sol, sled1_date_seq, T_Sled1_Y1, "Point Judith Pond N 1") %>% bind_rows(.id = "params")
 sled2_sols<- map(sled2_sols, clean_ode_sol, sled2_date_seq, T_Sled2_Y1, "Point Judith Pond N 2") %>% bind_rows(.id = "params")

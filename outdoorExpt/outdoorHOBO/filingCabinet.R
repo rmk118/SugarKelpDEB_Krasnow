@@ -278,3 +278,118 @@ ctrl_params_plot_means<-ggplot()+
 
 nls_fun(df=lit_data_plus, type="stress", level="high")$std_rate==high_smooth
 #IT WORKS
+
+
+# #### Plot: means stress points/curves ####
+# new_params_plot_means <-ggplot()+
+#   geom_point(data=lit_data, aes(x=temp, y=std_rate, shape=paper), size=4)+
+#   geom_point(data=unh_stress %>% mutate(stress_group=factor(stress_group, levels=c("low", "med", "high"))), aes(x=temp, y=std_rgr,color=stress_group, shape="unh_stress"), size=3)+
+#   geom_line(data=stress_groups %>% filter(type=="means"), aes(x=temp, y=std_rate, color=group),linewidth=1.1)+
+#   theme_classic()+
+#   #coord_cartesian(xlim=c(-5, 35), ylim=c(0,2.5), expand=FALSE)+
+#   scale_x_continuous(breaks = seq(-5,35,5))+
+#   #scale_y_continuous(breaks = seq(0,2.5,0.5))+
+#   scale_shape_manual(values=c(15,18,8,16,17), 
+#                      labels=c("Bolton and Lüning (1982)",
+#                               "Fortes and Lüning (1980)",
+#                               "Davison and Davison (1987)",
+#                               "Davison (1987)",
+#                               "This study"))+
+#   scale_color_manual(values = c("#dd4124", "#edd746",'#0f85a0'), labels=c("Low tolerance", "Medium tolerance", "High tolerance"))+
+#   labs(x="Temperature (°C)", y="Standardized rate", color=NULL, shape=NULL, fill=NULL)+
+#   guides(color = guide_legend( 
+#     override.aes=list(shape = "-")))+
+#   theme(text = element_text(size=15, color="black"),
+#         plot.margin = margin(0.4,0.7,0.4,0.4, "cm"),
+#         axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
+#         axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)),
+#         axis.title = element_text(size=18), axis.text = element_text(size=18, color="black"),
+#         #legend theming
+#         #legend.margin = margin(-0.7,0, -0.6, 0, "lines"),
+#         #legend.position = c(.85, .8),
+#         legend.position = "none")+
+#        # legend.text = element_text(size=9, face="bold"),
+#        # legend.box.background = element_rect(color="black"),
+#        # legend.box.margin = margin(0.1, 0.3, 0.8, 0.2, "lines"),
+#         #legend.key.size = unit(0.9, "lines"))+
+#   ggtitle("Stress - means")
+# new_params_plot_means
+# 
+# ggsave(
+#   filename="./figures/threeCurves.png",
+#   plot=new_params_plot_means, 
+#   device="png",
+#   width = 855, height = 750, units = "px",scale=2.6
+# )
+# 
+# #### Consolidated refit parameters ###
+# params<-data.frame(curve=c("Venolia", "Refit", "High stress means", "Med stress means", "Low stress means", "High stress all", "Med stress all", "Low stress all", "High control all", "Med control all", "Low control all"),
+#            T_A=c(T_A, new_T_A, high_T_A, med_T_A, low_T_A, high_T_A_all, med_T_A_all, low_T_A_all, high_T_A_all_ctrl, med_T_A_all_ctrl,low_T_A_all_ctrl),
+#            T_H=c(T_H, new_T_H, high_T_H, med_T_H, low_T_H, high_T_H_all, med_T_H_all, low_T_H_all, high_T_H_all_ctrl, med_T_H_all_ctrl,low_T_H_all_ctrl),
+#            T_AH = c(T_AH, new_T_AH, high_T_AH, med_T_AH, low_T_AH, high_T_AH_all, med_T_AH_all, low_T_AH_all,high_T_AH_all_ctrl, med_T_AH_all_ctrl,low_T_AH_all_ctrl)) %>% 
+#   mutate(T_L=T_L, T_AL=T_AL, T_0=T_0)
+# 
+# 
+# #### Plot: all stress points/curves ####
+# stress_all_plot<- ggplot()+
+#   geom_line(data=stress_groups %>% filter(type=="all"), aes(x=temp, y=std_rate, color=level),linewidth=1.1)+
+#   geom_line(aes(x=temp_smooth-273.15, y=y_smooth_venolia, color="Venolia"))+
+#   theme_classic()+
+#   scale_shape_manual(values=c(15,18,8,16,20), 
+#                      labels=c("Bolton and Lüning (1982)",
+#                               "Fortes and Lüning (1980)",
+#                               "Davison and Davison (1987)",
+#                               "Davison (1987)",
+#                               "This study"))+
+#   geom_point(data=lit_data, aes(x=temp, y=std_rate, shape=paper), size=4)+
+#   geom_point(data=unh_stress_all %>% mutate(stress_group=factor(stress_group, levels=c("low", "med", "high"))), aes(x=temp, y=std_rgr,color=stress_group, shape="unh_stress"), size=3)+
+#   scale_x_continuous(breaks = seq(-5,35,5))+
+#   scale_color_manual(values = c("#dd4124", "#edd746",'#0f85a0', "black"), labels=c("Low tolerance", "Medium tolerance", "High tolerance", "Venolia"))+
+#   labs(x="Temperature (°C)", y="Standardized rate", shape=NULL,color=NULL, linetype=NULL, fill=NULL)+
+#   guides(color = guide_legend( 
+#     override.aes=list(shape = "-")))+
+#   theme(text = element_text(size=15, color="black"),
+#         plot.margin = margin(0.4,0.7,0.4,0.4, "cm"),
+#         axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
+#         axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)),
+#         axis.title = element_text(size=18), axis.text = element_text(size=18, color="black"),
+#         #legend theming
+#         legend.margin = margin(-0.7,0, -0.6, 0, "lines"),
+#         #legend.position = c(.85, .8),
+#         legend.position = "right",
+#         legend.text = element_text(size=9, face="bold"),
+#         legend.box.background = element_rect(color="black"),
+#         legend.box.margin = margin(0.1, 0.3, 0.8, 0.2, "lines"),
+#         legend.key.size = unit(0.9, "lines"))+ggtitle("Stress - all")
+# 
+# #### Plot: Control stress points/curves ####
+# control_all_plot<- ggplot()+
+#   geom_line(data=ctrl_groups %>% filter(type=="all"), aes(x=temp, y=std_rate, color=level),linewidth=1.1)+
+#   theme_classic()+
+#   scale_shape_manual(values=c(15,18,8,16,20), 
+#                      labels=c("Bolton and Lüning (1982)",
+#                               "Fortes and Lüning (1980)",
+#                               "Davison and Davison (1987)",
+#                               "Davison (1987)",
+#                               "This study"))+
+#   geom_point(data=lit_data, aes(x=temp, y=std_rate, shape=paper), size=4)+
+#   geom_point(data=unh_ctrl_all %>% mutate(ctrl_group=factor(ctrl_group, levels=c("low", "med", "high"))), aes(x=temp, y=std_rgr,color=ctrl_group, shape="unh_ctrl"), size=3)+
+#   scale_x_continuous(breaks = seq(-5,35,5))+
+#   scale_color_manual(values = c("#dd4124", "#edd746",'#0f85a0'), labels=c("Low tolerance", "Medium tolerance", "High tolerance"))+
+#   labs(x="Temperature (°C)", y="Standardized rate", shape=NULL,color=NULL, linetype=NULL, fill=NULL)+
+#   guides(color = guide_legend( 
+#     override.aes=list(shape = "-")))+
+#   theme(text = element_text(size=15, color="black"),
+#         plot.margin = margin(0.4,0.7,0.4,0.4, "cm"),
+#         axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
+#         axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)),
+#         axis.title = element_text(size=18), axis.text = element_text(size=18, color="black"))+
+#         #legend theming
+#         #legend.margin = margin(-0.7,0, -0.6, 0, "lines"),
+#         #legend.position = c(.85, .8),
+#         #legend.position = "none")+
+#         #legend.text = element_text(size=9, face="bold"),
+#         #legend.box.background = element_rect(color="black"),
+#         #legend.box.margin = margin(0.1, 0.3, 0.8, 0.2, "lines"),
+#         #legend.key.size = unit(0.9, "lines"))+
+#   ggtitle("Control - all")

@@ -84,7 +84,7 @@ sum(growth_rates$flag_diff)
 sum(growth_rates$big_loss)
 
 #We remove instances where the entire blade growth was substantially more than the hole punch growth or the hole punch length shrunk substantially between weeks
-growth_rates_no_flags <- growth_rates %>% filter(big_loss==FALSE, flag_diff==FALSE) %>% 
+growth_rates_no_flags <- growth_rates %>% filter(big_loss==FALSE, flag_diff==FALSE) %>%
   mutate(trt = fct_drop(trt), cross=fct_drop(cross))
 
 # Note: overall, we are using the three treatments as a way to get growth rates under different temperatures. There were no substantial differences between the high N and low N tanks, so we are considering treatment A to be "control" conditions and everything else to be "stress" conditions
@@ -99,7 +99,7 @@ mean_growth_by_cross_ctrl <- growth_rates_no_flags %>%
 
 # This summarizes the mean growth of each cross under stress/ambient temps, which increased throughout the summer
 mean_growth_by_cross_stress <- growth_rates_no_flags %>% 
-  filter(trt!="A") %>%
+  #filter(trt!="A") %>%
   ungroup() %>% group_by(cross) %>% 
   summarise(gr_hp=mean(rgr)) %>% 
   arrange(-gr_hp) %>% 
@@ -156,43 +156,139 @@ ggplot(data=growth_rates_no_flags)+
   scale_fill_viridis_d()+
   theme_classic()
 
-# Function to add week and treatment to dataframes
-add_week_trt_fun <- function (df){
+# Function to add week to data frames
+add_week_fun <- function (df){
   df_out <- df %>% ungroup() %>% mutate(week = case_when(
     date=="2023-06-28" ~ 2, #add week column
     date=="2023-07-05" ~ 3,
-    date=="2023-07-13" ~ 4), 
-    trt = case_when( #add treatment column
-      trt=="A" ~ "control",
-      trt=="B" ~ "highN",
-      trt=="C" ~ "lowN"), .keep="unused")
+    date=="2023-07-13" ~ 4))
   df_out
 }
 
-weekly_growth_stress <- growth_rates_no_flags %>% group_by(stress_group, date, trt) %>% 
+# Function to add treatment to data frames
+add_trt_fun <- function (df){
+  df_out <- df %>% ungroup() %>% mutate(trt = case_when( #add treatment column
+      trt=="A" ~ "control",
+      trt=="B" ~ "highN",
+      trt=="C" ~ "lowN"))
+  df_out
+}
+
+weekly_growth_stress <- growth_rates_no_flags %>% group_by(stress_group, date, trt) %>%
   summarise(mean_growth = mean(growth_hp, na.rm=TRUE),
             mean_rgr = mean(growth_rate_hp, na.rm=TRUE),
             mean_rgr = mean(rgr, na.rm=TRUE),
-            max_rgr = max(rgr, na.rm=TRUE)) %>% add_week_trt_fun()
+            max_rgr = max(rgr, na.rm=TRUE)) %>% add_week_trt_fun() %>% 
+  full_join(weekly_means_all) %>% 
+  filter(!(week %in% c(1,5)))
 
 weekly_growth_ctrl <- growth_rates_no_flags %>% group_by(ctrl_group, date, trt) %>% 
   summarise(mean_growth = mean(growth_hp, na.rm=TRUE),
             mean_rgr = mean(growth_rate_hp, na.rm=TRUE),
             mean_rgr = mean(rgr, na.rm=TRUE),
-            max_rgr = max(rgr, na.rm=TRUE)) %>% add_week_trt_fun()
+            max_rgr = max(rgr, na.rm=TRUE)) %>% add_week_trt_fun() %>% 
+  full_join(weekly_means_all) %>% 
+  filter(!(week %in% c(1,5)))
 
 growth_rates_no_flags <- growth_rates_no_flags %>% add_week_trt_fun() %>% 
-  left_join(weekly_means) #join with temperature data
-
-weekly_means_growth_stress<-full_join(weekly_means_all, weekly_growth_stress) %>% 
-  filter(!(week %in% c(1,5)))
-
-weekly_means_growth_ctrl<-full_join(weekly_means, weekly_growth_ctrl) %>% 
-  filter(!(week %in% c(1,5)))
+  left_join(weekly_means_degC) #join with temperature data
 
 ggplot(data=growth_rates_no_flags %>% na.omit())+
   geom_point(aes(x=mean_temp, y=rgr,color=stress_group, fill=stress_group))+
   geom_smooth(aes(x=mean_temp, y=rgr,color=stress_group, fill=stress_group), se=FALSE)
+
+#### Set-up for new data NLS #####
+# 20°C was the average temp in the low N experimental tank during week 2, so we use the RGR of each group after week 2 as the growth rate at the Arrhenius reference temperature. However, the experimental kelp blades were still acclimating to their new environments and were generally stressed during the first couple weeks of the experiment— this is also reflected in the PAM measurements. Many of the growth rates were negative or very low during this period, so we're using the max RGR instead of mean RGR when considering week 2 data.
+
+# find the RGR at the reference temperature (20°C) when we split the 30 strains into groups of 3 based on their growth rates in the HEAT STRESS treatments
+t_stress <- weekly_growth_stress %>% 
+  group_by(stress_group) %>% 
+  filter(round(mean_temp,1)==20) %>% 
+  mutate(ref_rgr = max_rgr) %>% 
+  select(stress_group, ref_rgr)
+
+# find the RGR at the reference temperature (20°C) for the three groups when we split the 30 strains into groups of 3 based on their growth rates in the CONTROL TEMPERATURE treatment
+t_ctrl <- weekly_growth_ctrl %>% ungroup() %>% 
+  group_by(ctrl_group) %>% 
+  filter(round(mean_temp,1)==20) %>% 
+  mutate(ref_rgr = max_rgr) %>% 
+  select(ctrl_group, ref_rgr)
+
+#### Finding RGR at the grouping level
+unh_stress <- weekly_growth_stress %>% 
+  left_join(t_stress) %>%  #add a column to the weekly means (stress grouping) with reference RGRs
+  mutate(across(c(mean_rgr, max_rgr),
+                ~if_else(.x<0 | is.na(.x), 0, .x))) %>% # Replace any negative or missing RGRs with 0
+  mutate(std_rgr_max = max_rgr/ref_rgr, # standardized max RGR (max RGR divided by ref temp RGR)
+         std_rgr_mean = mean_rgr/ref_rgr, # standardized mean RGR (mean RGR divided by ref temp RGR)
+         std_rgr = case_when(week==2 & trt!="control"~ std_rgr_max, #use max for week 2 non-control
+                             .default= std_rgr_mean)) %>% ungroup() %>%
+  mutate(paper="unh_stress_all023", paper_full=paste(paper, stress_group, sep="_"), temp=mean_temp, rate=mean_rgr, extra_info=trt, temp_K=temp+273.15) %>% #adding columns with identifying info
+  select(paper, paper_full, temp, rate, std_rgr, extra_info, temp_K, stress_group)
+
+unh_ctrl <- weekly_growth_ctrl %>%
+  left_join(t_ctrl) %>% #add a column to the weekly means (stress grouping) with reference RGRs
+  mutate(across(c(mean_rgr, max_rgr),
+                ~if_else(.x<0 | is.na(.x), 0, .x))) %>% # Replace any negative or missing RGRs with 0
+  mutate(std_rgr_max = max_rgr/ref_rgr, # standardized max RGR (max RGR divided by ref temp RGR)
+         std_rgr = mean_rgr/ref_rgr) %>% # standardized mean RGR (mean RGR divided by ref temp RGR)
+  ungroup() %>%
+  mutate(paper="unh_ctrl_all2023", paper_full=paste(paper, ctrl_group, sep="_"), temp=mean_temp, rate=mean_rgr, extra_info=trt, temp_K=temp+273.15) %>% #adding columns with identifying info
+  select(paper, paper_full, temp, rate, std_rgr, extra_info, temp_K, ctrl_group)
+
+unh_stress_rep <- growth_rates_no_flags %>% 
+  left_join(t_stress) %>% 
+  mutate(rgr= if_else(rgr<0 | is.na(rgr), 0, rgr),
+         std_rgr = rgr/ref_rgr) %>% 
+  ungroup() %>%
+  mutate(paper="unh_stress_all2023", paper_full = paste(paper, stress_group, sep="_"), temp=mean_temp, rate=rgr, extra_info=trt, temp_K= temp + 273.15) %>% #adding columns with identifying info
+  select(paper, paper_full, temp, rate, std_rgr, extra_info, temp_K, ctrl_group, stress_group)
+
+unh_ctrl_rep <- growth_rates_no_flags %>% 
+  left_join(t_ctrl) %>% 
+  mutate(rgr= if_else(rgr<0 | is.na(rgr), 0, rgr),
+         std_rgr = rgr/ref_rgr) %>%
+  ungroup() %>%
+  mutate(paper="unh_ctrl_all2023", paper_full=paste(paper, ctrl_group, sep="_"), temp=mean_temp, rate=rgr, extra_info=trt, temp_K=temp+273.15) %>% #adding columns with identifying info
+  select(paper, paper_full, temp, rate, std_rgr, extra_info, temp_K, ctrl_group,stress_group)
+
+
+lit_data_plus <- bind_rows(lit_data, 
+                           unh_stress %>% mutate(std_rate=std_rgr,ctrl_group = NA,.keep="unused")) %>% 
+  mutate(type="stress", res="means")
+
+lit_data_plus_rep <- bind_rows(lit_data,
+                               unh_stress_rep %>% mutate(std_rate=std_rgr,.keep="unused")) %>% 
+  mutate(type="stress", res="all")
+
+lit_data_plus_ctrl <- bind_rows(lit_data,
+                                unh_ctrl %>% mutate(std_rate=std_rgr, stress_group = NA,.keep="unused")) %>%
+  mutate(type="ctrl", res="means")
+
+lit_data_plus_rep_ctrl <- bind_rows(lit_data,
+                                    unh_ctrl_rep %>% mutate(std_rate=std_rgr,.keep="unused")) %>%
+  mutate(type="ctrl", res="all")
+
+all_lit_data <- rbind(lit_data_plus, lit_data_plus_rep, lit_data_plus_ctrl, lit_data_plus_rep_ctrl) %>% distinct() %>% # removes duplicate rows (i.e., the original literature data)
+  mutate(level = case_when(str_ends(paper_full, "high") ~ "high",
+                           str_ends(paper_full, "med") ~ "med",
+                           str_ends(paper_full, "low") ~ "low",
+                           .default = "lit"),
+         level = as_factor(level),
+         level = fct_relevel(level, c("high", "med", "low", "lit")))
+
+(ggplot()+
+    geom_point(data=lit_data_plus, aes(x=temp, y=std_rate, color=stress_group)))+
+  (ggplot()+
+     geom_point(data=lit_data_plus_ctrl, aes(x=temp, y=std_rate, color=ctrl_group)))+
+  (ggplot()+
+     geom_point(data=lit_data_plus_rep, aes(x=temp, y=std_rate, color=stress_group)))+
+  (ggplot()+
+     geom_point(data=lit_data_plus_rep, aes(x=temp, y=std_rate, color=ctrl_group)))
+
+ggplot()+geom_point(data=all_lit_data, aes(x=temp, y=std_rate, color=level))+facet_grid(type~res)
+
+
 
 #### Literature data ####
 lit_data <- read.csv("~/Downloads/MBL_SES/arrhenius_lit_data.csv") %>% 
@@ -304,97 +400,6 @@ new_T_AH <- params_orig$m$getPars()[[3]]
 new_smooth <- exp((new_T_A/T_0)-(new_T_A/temp_smooth))*(1+exp((T_AL/T_0)-(T_AL/T_L))+exp((new_T_AH/new_T_H)-(new_T_AH/T_0))) * ((1+exp((T_AL/temp_smooth)-(T_AL/T_L))+exp((new_T_AH/new_T_H)-(new_T_AH/temp_smooth)))^-1)
 
 
-#### Set-up for new data NLS #####
-# 20°C was the average temp in the low N experimental tank during week 2, so we use the RGR of each group after week 2 as the growth rate at the Arrhenius reference temperature. However, the experimental kelp blades were still acclimating to their new environments and were generally stressed during the first couple weeks of the experiment— this is also reflected in the PAM measurements. Many of the growth rates were negative or very low during this period, so we're using the max RGR instead of mean RGR when considering week 2 data.
-
-# find the RGR at the reference temperature (20°C) when we split the 30 strains into groups of 3 based on their growth rates in the HEAT STRESS treatments
-t_stress <- weekly_means_growth_stress %>% 
-  group_by(stress_group) %>% 
-  filter(round(mean_temp,1)==20) %>% 
-  mutate(ref_rgr = max_rgr) %>% 
-  select(stress_group, ref_rgr)
-
-# find the RGR at the reference temperature (20°C) for the three groups when we split the 30 strains into groups of 3 based on their growth rates in the CONTROL TEMPERATURE treatment
-t_ctrl <- weekly_means_growth_ctrl %>% ungroup() %>% 
-  group_by(ctrl_group) %>% 
-  filter(round(mean_temp,1)==20) %>% 
-  mutate(ref_rgr = max_rgr) %>% 
-  select(ctrl_group, ref_rgr)
-
-#### Finding RGR at the grouping level
-unh_stress <- weekly_means_growth_stress %>% 
-  left_join(t_stress) %>%  #add a column to the weekly means (stress grouping) with reference RGRs
-  mutate(across(c(mean_rgr, max_rgr),
-                ~if_else(.x<0 | is.na(.x), 0, .x))) %>% # Replace any negative or missing RGRs with 0
-  mutate(std_rgr_max = max_rgr/ref_rgr, # standardized max RGR (max RGR divided by ref temp RGR)
-         std_rgr_mean = mean_rgr/ref_rgr, # standardized mean RGR (mean RGR divided by ref temp RGR)
-         std_rgr = case_when(week==2 & trt!="control"~ std_rgr_max, #use max for week 2 non-control
-                              .default= std_rgr_mean)) %>% ungroup() %>%
-  mutate(paper="unh_stress_all023", paper_full=paste(paper, stress_group, sep="_"), temp=mean_temp, rate=mean_rgr, extra_info=trt, temp_K=temp+273.15) %>% #adding columns with identifying info
-  select(paper, paper_full, temp, rate, std_rgr, extra_info, temp_K, stress_group)
-
-unh_ctrl <- weekly_means_growth_ctrl %>%
-  left_join(t_ctrl) %>% #add a column to the weekly means (stress grouping) with reference RGRs
-  mutate(across(c(mean_rgr, max_rgr),
-                ~if_else(.x<0 | is.na(.x), 0, .x))) %>% # Replace any negative or missing RGRs with 0
-  mutate(std_rgr_max = max_rgr/ref_rgr, # standardized max RGR (max RGR divided by ref temp RGR)
-         std_rgr = mean_rgr/ref_rgr) %>% # standardized mean RGR (mean RGR divided by ref temp RGR)
-  ungroup() %>%
-  mutate(paper="unh_ctrl_all023", paper_full=paste(paper, ctrl_group, sep="_"), temp=mean_temp, rate=mean_rgr, extra_info=trt, temp_K=temp+273.15) %>% #adding columns with identifying info
-  select(paper, paper_full, temp, rate, std_rgr, extra_info, temp_K, ctrl_group)
-
-unh_stress_all <- growth_rates_no_flags %>% 
-    left_join(t_stress) %>% 
-    mutate(rgr= if_else(rgr<0 | is.na(rgr), 0, rgr),
-           std_rgr = rgr/ref_rgr) %>% 
-    ungroup() %>%
-    mutate(paper="unh_stress_all023", paper_full = paste(paper, stress_group, sep="_"), temp=mean_temp, rate=rgr, extra_info=trt, temp_K= temp + 273.15) %>% #adding columns with identifying info
-    select(paper, paper_full, temp, rate, std_rgr, extra_info, temp_K, ctrl_group, stress_group)
-  
-unh_ctrl_all <- growth_rates_no_flags %>% 
-    left_join(t_ctrl) %>% 
-    mutate(rgr= if_else(rgr<0 | is.na(rgr), 0, rgr),
-           std_rgr = rgr/ref_rgr) %>%
-    ungroup() %>%
-    mutate(paper="unh_ctrl_all023", paper_full=paste(paper, ctrl_group, sep="_"), temp=mean_temp, rate=rgr, extra_info=trt, temp_K=temp+273.15) %>% #adding columns with identifying info
-    select(paper, paper_full, temp, rate, std_rgr, extra_info, temp_K, ctrl_group,stress_group)
-
-
-lit_data_plus <- bind_rows(lit_data, 
-              unh_stress %>% mutate(std_rate=std_rgr,ctrl_group = NA,.keep="unused")) %>% 
-  mutate(type="stress", res="means")
-
-lit_data_plus_ext <- bind_rows(lit_data,
-              unh_stress_all %>% mutate(std_rate=std_rgr,.keep="unused")) %>% 
-  mutate(type="stress", res="all")
-
-lit_data_plus_ctrl <- bind_rows(lit_data,
-              unh_ctrl %>% mutate(std_rate=std_rgr, stress_group = NA,.keep="unused")) %>%
-  mutate(type="ctrl", res="means")
-
-lit_data_plus_ext_ctrl <- bind_rows(lit_data,
-              unh_ctrl_all %>% mutate(std_rate=std_rgr,.keep="unused")) %>%
-  mutate(type="ctrl", res="all")
-
-all_lit_data <- rbind(lit_data_plus, lit_data_plus_ext, lit_data_plus_ctrl, lit_data_plus_ext_ctrl) %>% distinct() %>% # removes duplicate rows (i.e., the original literature data)
-  mutate(level = case_when(str_ends(paper_full, "high") ~ "high",
-                           str_ends(paper_full, "med") ~ "med",
-                           str_ends(paper_full, "low") ~ "low",
-                           .default = "lit"),
-         level = as_factor(level),
-         level = fct_relevel(level, c("high", "med", "low", "lit")))
-
-(ggplot()+
-  geom_point(data=lit_data_plus, aes(x=temp, y=std_rate, color=stress_group)))+
-(ggplot()+
-  geom_point(data=lit_data_plus_ctrl, aes(x=temp, y=std_rate, color=ctrl_group)))+
-(ggplot()+
-  geom_point(data=lit_data_plus_ext, aes(x=temp, y=std_rate, color=stress_group)))+
-(ggplot()+
-  geom_point(data=lit_data_plus_ext, aes(x=temp, y=std_rate, color=ctrl_group)))
-
-ggplot()+geom_point(data=all_lit_data, aes(x=temp, y=std_rate, color=level))+facet_grid(type~res)
-
 
 ### NLS incorporating new data ####
 
@@ -410,6 +415,8 @@ nls_fun <- function(df, type, level) {
                      (1+exp((T_AL/T_0)-(T_AL/T_L)) + exp((T_ah/T_h)-(T_ah/T_0))) *
                      ((1+exp((T_AL/temp_K)-(T_AL/T_L))+exp((T_ah/T_h)-(T_ah/temp_K)))^-1),
                    start=list(T_a=T_a, T_h=T_h, T_ah=T_ah),
+                   lower=c(6000,282.15,12000),
+                   upper=c(12500,290.15,25000),
                    data = data)
   
   temp_T_A <- nls_res$m$getPars()[[1]]
@@ -429,7 +436,7 @@ ggplot()+
   geom_line(data=stress_means_df %>% group_by(level), aes(x=temp_smooth, y=std_rate, color=level))
 
 ##### Stress all #### 
-stress_all_df <- map(.x=c(high="high", med="med", low="low"), .f=nls_fun, df=lit_data_plus_ext, type="stress") %>% bind_rows(.id="level") %>% mutate(res="all")
+stress_all_df <- map(.x=c(high="high", med="med", low="low"), .f=nls_fun, df=lit_data_plus_rep, type="stress") %>% bind_rows(.id="level") %>% mutate(res="all")
 
 ggplot()+
   geom_line(data=stress_all_df %>% group_by(level), aes(x=temp_smooth, y=std_rate, color=level))
@@ -441,7 +448,7 @@ ggplot()+
   geom_line(data=ctrl_means_df %>% group_by(level), aes(x=temp_smooth, y=std_rate, color=level))
 
 ##### Control all #### 
-ctrl_all_df <- map(.x=c(high="high", med="med", low="low"), .f=nls_fun, df=lit_data_plus_ext_ctrl, type="ctrl") %>% bind_rows(.id="level") %>% mutate(res="all")
+ctrl_all_df <- map(.x=c(high="high", med="med", low="low"), .f=nls_fun, df=lit_data_plus_rep_ctrl, type="ctrl") %>% bind_rows(.id="level") %>% mutate(res="all")
 
 ggplot()+
   geom_line(data=ctrl_all_df %>% group_by(level), aes(x=temp_smooth, y=std_rate, color=level))
@@ -452,121 +459,6 @@ all_calibrations <- rbind(stress_means_df, stress_all_df, ctrl_means_df, ctrl_al
          level = fct_relevel(level, c("high", "med", "low", "lit")))
 
 
-# #### Plot: means stress points/curves ####
-# new_params_plot_means <-ggplot()+
-#   geom_point(data=lit_data, aes(x=temp, y=std_rate, shape=paper), size=4)+
-#   geom_point(data=unh_stress %>% mutate(stress_group=factor(stress_group, levels=c("low", "med", "high"))), aes(x=temp, y=std_rgr,color=stress_group, shape="unh_stress"), size=3)+
-#   geom_line(data=stress_groups %>% filter(type=="means"), aes(x=temp, y=std_rate, color=group),linewidth=1.1)+
-#   theme_classic()+
-#   #coord_cartesian(xlim=c(-5, 35), ylim=c(0,2.5), expand=FALSE)+
-#   scale_x_continuous(breaks = seq(-5,35,5))+
-#   #scale_y_continuous(breaks = seq(0,2.5,0.5))+
-#   scale_shape_manual(values=c(15,18,8,16,17), 
-#                      labels=c("Bolton and Lüning (1982)",
-#                               "Fortes and Lüning (1980)",
-#                               "Davison and Davison (1987)",
-#                               "Davison (1987)",
-#                               "This study"))+
-#   scale_color_manual(values = c("#dd4124", "#edd746",'#0f85a0'), labels=c("Low tolerance", "Medium tolerance", "High tolerance"))+
-#   labs(x="Temperature (°C)", y="Standardized rate", color=NULL, shape=NULL, fill=NULL)+
-#   guides(color = guide_legend( 
-#     override.aes=list(shape = "-")))+
-#   theme(text = element_text(size=15, color="black"),
-#         plot.margin = margin(0.4,0.7,0.4,0.4, "cm"),
-#         axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
-#         axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)),
-#         axis.title = element_text(size=18), axis.text = element_text(size=18, color="black"),
-#         #legend theming
-#         #legend.margin = margin(-0.7,0, -0.6, 0, "lines"),
-#         #legend.position = c(.85, .8),
-#         legend.position = "none")+
-#        # legend.text = element_text(size=9, face="bold"),
-#        # legend.box.background = element_rect(color="black"),
-#        # legend.box.margin = margin(0.1, 0.3, 0.8, 0.2, "lines"),
-#         #legend.key.size = unit(0.9, "lines"))+
-#   ggtitle("Stress - means")
-# new_params_plot_means
-# 
-# ggsave(
-#   filename="./figures/threeCurves.png",
-#   plot=new_params_plot_means, 
-#   device="png",
-#   width = 855, height = 750, units = "px",scale=2.6
-# )
-# 
-# #### Consolidated refit parameters ###
-# params<-data.frame(curve=c("Venolia", "Refit", "High stress means", "Med stress means", "Low stress means", "High stress all", "Med stress all", "Low stress all", "High control all", "Med control all", "Low control all"),
-#            T_A=c(T_A, new_T_A, high_T_A, med_T_A, low_T_A, high_T_A_all, med_T_A_all, low_T_A_all, high_T_A_all_ctrl, med_T_A_all_ctrl,low_T_A_all_ctrl),
-#            T_H=c(T_H, new_T_H, high_T_H, med_T_H, low_T_H, high_T_H_all, med_T_H_all, low_T_H_all, high_T_H_all_ctrl, med_T_H_all_ctrl,low_T_H_all_ctrl),
-#            T_AH = c(T_AH, new_T_AH, high_T_AH, med_T_AH, low_T_AH, high_T_AH_all, med_T_AH_all, low_T_AH_all,high_T_AH_all_ctrl, med_T_AH_all_ctrl,low_T_AH_all_ctrl)) %>% 
-#   mutate(T_L=T_L, T_AL=T_AL, T_0=T_0)
-# 
-# 
-# #### Plot: all stress points/curves ####
-# stress_all_plot<- ggplot()+
-#   geom_line(data=stress_groups %>% filter(type=="all"), aes(x=temp, y=std_rate, color=level),linewidth=1.1)+
-#   geom_line(aes(x=temp_smooth-273.15, y=y_smooth_venolia, color="Venolia"))+
-#   theme_classic()+
-#   scale_shape_manual(values=c(15,18,8,16,20), 
-#                      labels=c("Bolton and Lüning (1982)",
-#                               "Fortes and Lüning (1980)",
-#                               "Davison and Davison (1987)",
-#                               "Davison (1987)",
-#                               "This study"))+
-#   geom_point(data=lit_data, aes(x=temp, y=std_rate, shape=paper), size=4)+
-#   geom_point(data=unh_stress_all %>% mutate(stress_group=factor(stress_group, levels=c("low", "med", "high"))), aes(x=temp, y=std_rgr,color=stress_group, shape="unh_stress"), size=3)+
-#   scale_x_continuous(breaks = seq(-5,35,5))+
-#   scale_color_manual(values = c("#dd4124", "#edd746",'#0f85a0', "black"), labels=c("Low tolerance", "Medium tolerance", "High tolerance", "Venolia"))+
-#   labs(x="Temperature (°C)", y="Standardized rate", shape=NULL,color=NULL, linetype=NULL, fill=NULL)+
-#   guides(color = guide_legend( 
-#     override.aes=list(shape = "-")))+
-#   theme(text = element_text(size=15, color="black"),
-#         plot.margin = margin(0.4,0.7,0.4,0.4, "cm"),
-#         axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
-#         axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)),
-#         axis.title = element_text(size=18), axis.text = element_text(size=18, color="black"),
-#         #legend theming
-#         legend.margin = margin(-0.7,0, -0.6, 0, "lines"),
-#         #legend.position = c(.85, .8),
-#         legend.position = "right",
-#         legend.text = element_text(size=9, face="bold"),
-#         legend.box.background = element_rect(color="black"),
-#         legend.box.margin = margin(0.1, 0.3, 0.8, 0.2, "lines"),
-#         legend.key.size = unit(0.9, "lines"))+ggtitle("Stress - all")
-# 
-# #### Plot: Control stress points/curves ####
-# control_all_plot<- ggplot()+
-#   geom_line(data=ctrl_groups %>% filter(type=="all"), aes(x=temp, y=std_rate, color=level),linewidth=1.1)+
-#   theme_classic()+
-#   scale_shape_manual(values=c(15,18,8,16,20), 
-#                      labels=c("Bolton and Lüning (1982)",
-#                               "Fortes and Lüning (1980)",
-#                               "Davison and Davison (1987)",
-#                               "Davison (1987)",
-#                               "This study"))+
-#   geom_point(data=lit_data, aes(x=temp, y=std_rate, shape=paper), size=4)+
-#   geom_point(data=unh_ctrl_all %>% mutate(ctrl_group=factor(ctrl_group, levels=c("low", "med", "high"))), aes(x=temp, y=std_rgr,color=ctrl_group, shape="unh_ctrl"), size=3)+
-#   scale_x_continuous(breaks = seq(-5,35,5))+
-#   scale_color_manual(values = c("#dd4124", "#edd746",'#0f85a0'), labels=c("Low tolerance", "Medium tolerance", "High tolerance"))+
-#   labs(x="Temperature (°C)", y="Standardized rate", shape=NULL,color=NULL, linetype=NULL, fill=NULL)+
-#   guides(color = guide_legend( 
-#     override.aes=list(shape = "-")))+
-#   theme(text = element_text(size=15, color="black"),
-#         plot.margin = margin(0.4,0.7,0.4,0.4, "cm"),
-#         axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
-#         axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)),
-#         axis.title = element_text(size=18), axis.text = element_text(size=18, color="black"))+
-#         #legend theming
-#         #legend.margin = margin(-0.7,0, -0.6, 0, "lines"),
-#         #legend.position = c(.85, .8),
-#         #legend.position = "none")+
-#         #legend.text = element_text(size=9, face="bold"),
-#         #legend.box.background = element_rect(color="black"),
-#         #legend.box.margin = margin(0.1, 0.3, 0.8, 0.2, "lines"),
-#         #legend.key.size = unit(0.9, "lines"))+
-#   ggtitle("Control - all")
-
-
 ggplot()+
   geom_line(data=all_calibrations %>% group_by(type, level, res), aes(x=temp_smooth-273.15, y=std_rate, color=level), linewidth=2)+
   geom_point(data=all_lit_data, aes(x=temp, y=std_rate, color=level))+
@@ -575,7 +467,7 @@ ggplot()+
   #ylim(0,5)+
   labs(x="Temperature (°C)", y="Standardized rate", color=NULL)
 
-ggplot()+
+means_plot<-ggplot()+
   geom_point(data=all_lit_data %>% filter(res=="means"), aes(x=temp, y=std_rate, color=level))+
   geom_line(data=all_calibrations %>% group_by(type, level, res) %>% filter(res=="means"), aes(x=temp_smooth-273.15, y=std_rate, color=level), linewidth=2)+
   
@@ -589,13 +481,18 @@ ggplot()+
         axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
         axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))
 
-ggplot()+
+ind_plot<-ggplot()+
   geom_line(data=all_calibrations %>% group_by(type, level, res) %>% filter(res=="all"), aes(x=temp_smooth-273.15, y=std_rate, color=level), linewidth=1)+
-  geom_point(data=all_lit_data %>% filter(res=="all"), aes(x=temp, y=std_rate, color=level))+
+  #geom_point(data=all_lit_data %>% filter(res=="all"), aes(x=temp, y=std_rate, color=level))+
   theme_bw()+
+  scale_color_manual(values=c("high"="#dd4124", "med"="#edd746","low"='#0f85a0', "lit"="gray"),
+                     breaks=c("high", "med", "low", "lit"),
+                     labels=c("high"="High", "med"="Medium", "low"="Low", "lit"="Literature"))+
   facet_wrap(~type, labeller = as_labeller(c(ctrl="Grouped by overall growth", stress='Grouped by heat tolerance')))+
   #ylim(0,5)+
   labs(x="Temperature (°C)", y="Standardized rate", color=NULL)+
   theme(text = element_text(size=15),
   axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
   axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))
+
+means_plot/ind_plot
