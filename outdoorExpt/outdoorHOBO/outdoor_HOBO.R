@@ -93,7 +93,7 @@ ggplot(data=all_hourly %>% filter(date < ymd("2023-07-18")))+
   scale_color_hue(labels = c("Control + N", "Heat + N", "Heat"))
   
 
-weekly_means_all <- bind_rows(list(high=weekly_means_degC, med=weekly_means_degC, low=weekly_means_degC), .id="stress_group")
+# weekly_means_all <- bind_rows(list(high=weekly_means_degC, med=weekly_means_degC, low=weekly_means_degC), .id="stress_group")
 
 ggplot(data=all_hourly %>% filter(date < ymd("2023-07-18"), PAR_hourly<20) %>% group_by(date) %>% summarise(PAR=mean(PAR_hourly)))+
   geom_vline(xintercept = c(as_datetime(c("2023-06-12","2023-06-20","2023-06-27","2023-07-04","2023-07-11","2023-07-18"))), linetype="dashed")+
