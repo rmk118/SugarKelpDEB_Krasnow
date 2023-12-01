@@ -443,3 +443,10 @@ unh_cross<-growth_rates_no_flags %>%
 # stress_cross_df <- map(.x=c(high="high", med="med", low="low"), .f=nls_fun, df=unh_cross, type="stress") %>% bind_rows(.id="level") %>% mutate(res="cross")
 
 # ctrl_cross_df <- map(.x=c(high="high", med="med", low="low"), .f=nls_fun, df=unh_cross, type="ctrl") %>% bind_rows(.id="level") %>% mutate(res="cross")
+
+#start_Wd <- 0.00387*33^(1.469) 
+# M_V = W/(w_V+M_EN*w_EN+M_EC*w_EC)
+# W = (w_V+M_EN*w_EN+M_EC*w_EC)* M_V
+#(w_V+0.01*w_EN+0.1*w_EC)* 5
+
+#state_Lo_UNH <- c(m_EC = 0.08, m_EN = 0.008, M_V = 1/(w_V+0.008*w_EN+0.08*w_EC))

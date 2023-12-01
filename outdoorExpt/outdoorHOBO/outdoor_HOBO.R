@@ -106,6 +106,6 @@ ggplot(data=all_hourly %>% filter(date < ymd("2023-07-14") & date > ymd("2023-06
         axis.title.x = element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)),
         axis.title = element_text(size=13), axis.text = element_text(size=14))
 
-PAR_forcing <- all_hourly %>% filter(date < ymd("2023-07-14") & date > ymd("2023-06-22"), PAR_hourly<750) %>% group_by(date) %>% summarise(PAR=mean(PAR_hourly)*60*60/10^5.6)
+PAR_forcing <- all_hourly %>% filter(date < ymd("2023-07-14") & date > ymd("2023-06-22"), PAR_hourly<750) %>% group_by(date) %>% summarise(PAR=mean(PAR_hourly)*60*60/10^5.6*0.5)
 
 temp_forcing <- all_hourly %>% filter(date < ymd("2023-07-14") & date > ymd("2023-06-22")) %>% select(date, trt, temp_hourly) %>% pivot_wider(names_from = trt, values_from = temp_hourly) %>% rename(control_temp=control, highN_temp=highN, lowN_temp=lowN)

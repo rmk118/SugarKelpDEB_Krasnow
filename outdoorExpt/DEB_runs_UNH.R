@@ -144,15 +144,13 @@ low_params_for_model_rep[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl
 growth_data %>% filter(date==as_date("2023-06-23")) %>% ggplot()+geom_histogram(aes(x=blade_len))+geom_vline(aes(xintercept=mean(blade_len)), color="red")+geom_vline(aes(xintercept=median(blade_len)), color="blue")
 
 growth_data %>% filter(date==as_date("2023-06-23")) %>% summarise(median_len = median(blade_len))
+growth_data %>% filter(date==as_date("2023-07-13")) %>% summarise(median_len = median(blade_len))
+
 PJN2_meandat %>% filter(Date==as_date("2018-02-14")) %>% pull(mean_length)
 sol_all %>% filter(source=="Point Judith Pond N 1", Date == as_datetime("2018-02-14 24:00:00"), params=="orig")  %>% select(L_allometric, M_V, m_EC, m_EN, W)
 
-#Initial conditions of state variables - estimated
-start_Wd <- 0.00387*33^(1.469)  
-state_Lo_UNH <- c(m_EC = 0.08, #mol C/molM_V  #Reserve density of C reserve (initial mass of C reserve per initial mass of structure)
-  m_EN = 0.008, #mol N/molM_V #Reserve density of N reserve (initial mass of N reserve per initial mass of structure)
-  # M_V = Wd/(w_V+M_EN*w_EN+M_EC*w_EC)
-  M_V = 0.66/(w_V+0.008*w_EN+0.08*w_EC)) #mol M_V #initial mass of structure
+#Initial conditions of state variables - gives starting length of 35cm, using #L=(DW/0.0155)^(1/1.3587)
+state_Lo_UNH <- c(m_EC = 0.01, m_EN = 0.001, M_V = 2/(w_V+0.001*w_EN+0.01*w_EC))
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ####### Time steps & forcing set-up #######
@@ -161,12 +159,46 @@ state_Lo_UNH <- c(m_EC = 0.08, #mol C/molM_V  #Reserve density of C reserve (ini
 times_Lo_UNH <- seq(0, 526, 1)
 
 # Irradiance forcing
-I_field <- approxfun(x = c(0:526), y = Z$PAR, method = "linear", rule = 2)
+I_field <- approxfun(x = c(0:526), y = Z$PAR*0.5, method = "linear", rule = 2)
 # Nitrate forcing
 N_field <- approxfun(x = c(0:526), y = Z$nitrate, method = "linear", rule = 2)
 # Temperature forcing - control tank
-T_field <- approxfun(x = c(0:526), y = Z$control_temp, method = "linear", rule = 2)
+T_field <- approxfun(x = c(0:526), y = Z$control_temp+273.15, method = "linear", rule = 2)
 
-sol_control_tank <- ode(y = state_Lo_UNH, t = times_Lo_UNH, func = rates_Lo, parms = params_Lo)
-unh_date_seq <- seq(as_datetime("2023-06-23 01:00:00"), as_datetime("2023-07-13 23:00:00"), by="hour")
-sol_control_tank <- clean_ode_sol(sol_control_tank, unh_date_seq, times_Lo_UNH)
+W <- 0.05
+sol_control_tank <- ode(y = state_Lo_UNH, t = times_Lo_UNH, func = rates_Lo, parms = low_params_for_model_cross)
+sol_control_tank <- ode(y = state_Lo_UNH, t = times_Lo_UNH, func = rates_Lo, parms = low_params_for_model_cross)
+sol_control_tank <- ode(y = state_Lo_UNH, t = times_Lo_UNH, func = rates_Lo, parms = low_params_for_model_cross)
+sol_control_tank <- ode(y = state_Lo_UNH, t = times_Lo_UNH, func = rates_Lo, parms = low_params_for_model_cross)
+
+sol_control_tank <- clean_ode_sol(sol_control_tank, Z$date, times_Lo_UNH, source="tank") %>% mutate(L_allometric)
+
+ggplot()+
+  geom_smooth(data=sol_control_tank, aes(x=Date, y=L_allometric))
+
+#params_list <- map(params, as_vector)
+
+run_model_fun <- function() {
+  params_temp <- params_Lo
+  params_temp[c("T_A", "T_H", "T_AH")] <- params %>% filter(type==type, level==level, res==res) %>% select(T_A, T_H, T_AH)
+  output_df <- tibble(params_temp)
+}
+
+update_params <- function(T_A, T_H, T_AH) {
+  params_temp <- params_Lo
+  params_temp[c("T_A", "T_H", "T_AH")] <- c(T_A, T_H, T_AH)
+  params_temp
+}
+ 
+params %>% rowwise() %>%  mutate(
+                  params_list = list(update_params(T_A, T_H, T_AH)))
+
+split(params)
+
+ggplot()+
+  geom_line(data=Z, aes(x=date, y=PAR*0.5))
+ # geom_line(data=Z, aes(x=date, y=control_temp))+
+  #geom_line(data=Z, aes(x=date, y=nitrate))
+
+
+
