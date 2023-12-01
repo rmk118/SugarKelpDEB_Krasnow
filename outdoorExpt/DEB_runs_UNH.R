@@ -11,8 +11,8 @@ library(Metrics)
 library(patchwork)
 
 #Required for model runs
-source("SolveR_R.R")
-source("KelpDEB_model.R")
+source("~/Downloads/SugarKelpDEB_Krasnow/SolveR_R.R") 
+source("~/Downloads/SugarKelpDEB_Krasnow/KelpDEB_model.R")
 source("./outdoorExpt/outdoorHOBO/outdoor_HOBO.R")
 source("./outdoorExpt/outdoor_expt.R")
 
@@ -152,15 +152,21 @@ start_Wd <- 0.00387*33^(1.469)
 state_Lo_UNH <- c(m_EC = 0.08, #mol C/molM_V  #Reserve density of C reserve (initial mass of C reserve per initial mass of structure)
   m_EN = 0.008, #mol N/molM_V #Reserve density of N reserve (initial mass of N reserve per initial mass of structure)
   # M_V = Wd/(w_V+M_EN*w_EN+M_EC*w_EC)
-  M_V = start_Wd/(w_V+0.008*w_EN+0.08*w_EC)) #mol M_V #initial mass of structure
+  M_V = 0.66/(w_V+0.008*w_EN+0.08*w_EC)) #mol M_V #initial mass of structure
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ####### Time steps & forcing set-up #######
 
 #going to run from 2023-06-23 01:00:00 to 2023-07-13 23:00:00, the last day of measuring
-times_Lo_UNH <- seq(0, 519, 1)
+times_Lo_UNH <- seq(0, 526, 1)
 
 # Irradiance forcing
-I_field <- approxfun(x = seq(from = 0, to = 519, by = 1), y = Z$PAR, method = "linear", rule = 2)
+I_field <- approxfun(x = c(0:526), y = Z$PAR, method = "linear", rule = 2)
 # Nitrate forcing
-N_field <- approxfun(x = seq(from = 0, to = 519, by = 1), y = Z$nitrate, method = "linear", rule = 2)
+N_field <- approxfun(x = c(0:526), y = Z$nitrate, method = "linear", rule = 2)
+# Temperature forcing - control tank
+T_field <- approxfun(x = c(0:526), y = Z$control_temp, method = "linear", rule = 2)
+
+sol_control_tank <- ode(y = state_Lo_UNH, t = times_Lo_UNH, func = rates_Lo, parms = params_Lo)
+unh_date_seq <- seq(as_datetime("2023-06-23 01:00:00"), as_datetime("2023-07-13 23:00:00"), by="hour")
+sol_control_tank <- clean_ode_sol(sol_control_tank, unh_date_seq, times_Lo_UNH)

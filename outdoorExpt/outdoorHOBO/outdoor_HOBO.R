@@ -108,4 +108,4 @@ ggplot(data=all_hourly %>% filter(date < ymd("2023-07-14") & date > ymd("2023-06
 
 PAR_forcing <- all_hourly %>% filter(date < ymd("2023-07-14") & date > ymd("2023-06-22"), PAR_hourly<750) %>% group_by(date) %>% summarise(PAR=mean(PAR_hourly)*60*60/10^5.6)
 
-temp_forcing <- View(all_hourly %>% filter(date < ymd("2023-07-14") & date > ymd("2023-06-22")) %>% select(date, trt, temp_hourly) %>% filter(trt=="control"))
+temp_forcing <- all_hourly %>% filter(date < ymd("2023-07-14") & date > ymd("2023-06-22")) %>% select(date, trt, temp_hourly) %>% pivot_wider(names_from = trt, values_from = temp_hourly) %>% rename(control_temp=control, highN_temp=highN, lowN_temp=lowN)

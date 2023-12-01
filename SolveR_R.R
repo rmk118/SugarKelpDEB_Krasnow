@@ -9,8 +9,8 @@ SolveR_R <- function(m_E, k_E, J_EM, y_EV, J_VM, r0){
 r <- r0 #set the r equal to zero the first time the loop runs
 M <- m_E / y_EV #help quantities #unit: mol i/mol Ei
 sM <- sum(M)  #sum of M necessary because m_E and y_EV are both vector objects with 2 elements #unit: mol i/mol Ei
-i <- 0 #set intial number of interations to zero (the loop increases i by 1 with each run)
-n <- 20 #max of interations was set at 20
+i <- 0 #set initial number of iterations to zero (the loop increases i by 1 with each run)
+n <- 20 #max of iterations was set at 20
 info <- 1 #If there is no convergence info is set to 0
 f <- 1 #allows the while loop to begin #initiate norm; make sure that iteration procedure is started
 

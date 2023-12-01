@@ -40,16 +40,18 @@ ggplot(data=nitrate2)+
 
 library(zoo)
 # Create zoo objects
+zT <- zoo(temp_forcing, order.by = temp_forcing$date)[,2:4]
 zPAR <- zoo(PAR_forcing$PAR, PAR_forcing$date) # high freq
 zN <- zoo(nitrate$nitrate, as.POSIXct(nitrate$date))  # low freq
 
 # Merge series into one object
-z <- merge(zPAR,zN)
-# Interpolate calibration data (na.spline could also be used)
+z <- merge(zT, zPAR,zN)
+# Interpolate calibration data
 z$zN <- na.approx(z$zN, rule=2)
+z$zPAR <- na.approx(z$zPAR, rule=2)
 # Only keep index values from sample data
-Z <- z[index(zPAR),]
-Z <- as_tibble(Z) %>% mutate(PAR=zPAR, nitrate=zN, .keep="unused", date=PAR_forcing$date)
+z <- z[index(zT),]
+Z <- as_tibble(z) %>% mutate(PAR=as.double(zPAR), nitrate=as.double(zN), .keep="unused", date=temp_forcing$date) %>% mutate(across(where(is.character), ~as.double(.x)))
 
 #### Growth data ####
 growth_data <- read.csv("~/Downloads/MBL_SES/outdoorExpt/growth.csv") %>% 
