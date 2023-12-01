@@ -54,7 +54,8 @@ all_hourly <- dat_full %>%
   mutate(date = round_date(datetime, "hour")) %>% 
   group_by(trt, date) %>% 
   summarize(temp_hourly = mean(temp, na.rm=TRUE),
-            PAR_hourly = mean(lux*0.0185, na.rm=TRUE)) %>% 
+            #PAR_hourly = mean(lux*0.0185, na.rm=TRUE)) %>% 
+            PAR_hourly = mean(lux, na.rm=TRUE)) %>% 
   filter(date > ymd_hm("2023-06-11 23:59") & date < ymd_hm("2023-07-18 23:59"))
 
 week1 <- interval(ymd_hm("2023-06-11 23:59"), ymd("2023-06-20"))
@@ -93,9 +94,10 @@ ggplot(data=all_hourly %>% filter(date < ymd("2023-07-18")))+
   scale_color_hue(labels = c("Control + N", "Heat + N", "Heat"))
 
 # PAR
-ggplot(data=all_hourly %>% filter(date < ymd("2023-07-18"), PAR_hourly<20) %>% group_by(date) %>% summarise(PAR=mean(PAR_hourly)))+
-  geom_vline(xintercept = c(as_datetime(c("2023-06-12","2023-06-20","2023-06-27","2023-07-04","2023-07-11","2023-07-18"))), linetype="dashed")+
-  geom_line(aes(x=date, y=PAR*60*60/10^4.25))+
+ggplot(data=all_hourly %>% filter(date < ymd("2023-07-14") & date > ymd("2023-06-22"), PAR_hourly<750) %>% group_by(date) %>% summarise(PAR=mean(PAR_hourly)))+
+  geom_vline(xintercept = c(as_datetime(c("2023-06-12","2023-06-20","2023-06-27","2023-07-04","2023-07-11"))), linetype="dashed")+
+  geom_line(aes(x=date, y=PAR*60*60/10^5.6))+
+  #geom_line(aes(x=date, y=PAR))+
   scale_x_datetime(breaks="7 days", date_labels = "%b %d")+
   labs(x=NULL, y="PAR", color="Treatment")+
   theme_light()+
@@ -104,3 +106,6 @@ ggplot(data=all_hourly %>% filter(date < ymd("2023-07-18"), PAR_hourly<20) %>% g
         axis.title.x = element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)),
         axis.title = element_text(size=13), axis.text = element_text(size=14))
 
+PAR_forcing <- all_hourly %>% filter(date < ymd("2023-07-14") & date > ymd("2023-06-22"), PAR_hourly<750) %>% group_by(date) %>% summarise(PAR=mean(PAR_hourly)*60*60/10^5.6)
+
+temp_forcing <- View(all_hourly %>% filter(date < ymd("2023-07-14") & date > ymd("2023-06-22")) %>% select(date, trt, temp_hourly) %>% filter(trt=="control"))

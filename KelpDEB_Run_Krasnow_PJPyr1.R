@@ -145,7 +145,7 @@ med_params_for_model_rep[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl
 low_params_for_model_rep[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="low", res=="all") %>% select(T_A, T_H, T_AH)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-####### Initial conditions ############
+####### Initial conditions year 1 ############
 #Initial conditions of state variables
 #these values are not coming from any field data or literature information, estimated
 state_Lo <- c(m_EC = 0.002, #0.1, #mol C/molM_V  #Reserve density of C reserve (initial mass of C reserve per initial mass of structure)
@@ -153,7 +153,7 @@ state_Lo <- c(m_EC = 0.002, #0.1, #mol C/molM_V  #Reserve density of C reserve (
               M_V = 0.05/(w_V+0.01*w_EN+0.002*w_EC)) #molM_V #initial mass of structure
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-####### Time steps #######
+####### Time steps year 1 #######
 #(First number of time step, last number of time step, interval to step)
 times_Lo_Sled1 <- seq(0, 4008, 1) #167 days stepped hourly
 times_Lo_Sled2 <- seq(0, 3336, 1) #139 days stepped hourly
@@ -175,7 +175,7 @@ NOAA_Irradiance$DownMinusUp <- NOAA_Irradiance$dswrf-NOAA_Irradiance$uswrf #net 
 #1e-6 converts from micomoles to moles
 NOAA_Irradiance$PAR <- NOAA_Irradiance$DownMinusUp*0.43*4.56*exp(-0.46*1)*3600*1e-6
 
-##### N forcing set-up ####
+##### N forcing set-up year 1 ####
 WSA2_Y1 <- read.csv("WaterSampleAnalysis2Y1.csv", header = TRUE, fileEncoding="UTF-8-BOM") #Import water Q data
 WSA2_Y1$Date <- mdy(WSA2_Y1$Date) #convert dates
 names(WSA2_Y1)[1] <- "Site" #only necessary for some computers running this code
@@ -197,7 +197,7 @@ CO_2 <- mean(DIC$DIC.uMkg.mean) #micromole DIC/kg (Jason said it was okay to ass
 #need units to match K_C (molDIC/L)
 CO_2 <- CO_2/1000000
 
-##### Temp forcing set-up ###########
+##### Temp forcing set-up year 1 ###########
 Sled_Y1_hobotemp_orig <- read.csv("Sled_Y1_TempLogger2.csv", header = TRUE, fileEncoding="UTF-8-BOM") #import
 Sled_Y1_hobotemp_orig$DateTime <- mdy_hms(Sled_Y1_hobotemp_orig$Date_Time) #convert time field
 Sled_Y1_hobotemp_orig$Temp_K <- Sled_Y1_hobotemp_orig$Temp_C+273.15 #create column with temp in K
@@ -207,7 +207,7 @@ Dredge_Y1_hobo_orig$DateTime <- mdy_hms(Dredge_Y1_hobo_orig$Date_Time) #convert 
 Dredge_Y1_hobo_orig$Temp_K <- Dredge_Y1_hobo_orig$Temp_C+273.15 #create column with temp in K
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-### FIELD DATA MODEL RUNS ####
+### FIELD DATA MODEL RUNS YR 1 ####
 
 ### Judith N (sled) line 1 ####
 W <- 0.05 #inital biomass for conversions (cannot put in initial conditions)
@@ -606,7 +606,7 @@ erPJS2 <- merge(PJS2_meandat_sub, dredge2_sols %>% filter(source=="Point Judith 
 PJS2_rmse <- rmse(erPJS2$mean_length, erPJS2$L_allometric)
 
 ###### Plots #####
-PJS1_2 <- ggplot() + 
+PJS_yr1<- ggplot() + 
   geom_point(data = PJS1_meandat, aes(Date, mean_length), shape = 'diamond', size = 3) +
   geom_errorbar(PJS1_meandat, mapping = aes(x = Date, ymin = mean_length-sd_length, ymax = mean_length+sd_length), width = 1) +
   geom_smooth(data = sol_all_orig[sol_all_orig$source == "Point Judith Pond S 1",], aes(Date, L_allometric, color = source)) +
@@ -625,7 +625,7 @@ PJS1_2 <- ggplot() +
   ggtitle("Point Judith Pond S") +
   theme(legend.position="none")
 
-PJN1_2 <- ggplot() + 
+PJN_yr1 <- ggplot() + 
   geom_point(data = PJN1_meandat, aes(Date, mean_length), shape = 'diamond', size = 3) +
   geom_errorbar(PJN1_meandat, mapping = aes(x = Date, ymin = mean_length-sd_length, ymax = mean_length+sd_length), width = 1) +
   geom_smooth(data = sol_all_orig[sol_all_orig$source == "Point Judith Pond N 1",], aes(Date, L_allometric, color = source)) +
@@ -644,7 +644,7 @@ PJN1_2 <- ggplot() +
   ggtitle("Point Judith Pond N") +
   theme(legend.position="none")
 
-PJS1_2+PJN1_2
+PJS_yr1+PJN_yr1
 
 #combine all original field data into one dataframe
 sol_all <- rbind(dredge1_sols,dredge2_sols,sled1_sols, sled2_sols)
@@ -653,3 +653,34 @@ ggplot() +
   geom_smooth(data = sol_all, aes(Date, L_allometric, color = params), se=FALSE)+
   labs(x= "Date", y = "Blade length (cm)")+
   facet_wrap(~source)
+
+
+ggplot() + 
+  geom_point(data = PJN1_meandat, aes(Date, mean_length), shape = 'diamond', size = 3) +
+  geom_errorbar(PJN1_meandat, mapping = aes(x = Date, ymin = mean_length-sd_length, ymax = mean_length+sd_length), width = 1) +
+  geom_smooth(data = sled1_sols, aes(Date, L_allometric, color = params), se=FALSE)+
+  labs(x= "Date", y = "Blade length (cm)")
+
+ggplot() + 
+  geom_point(data = PJN2_meandat, aes(Date, mean_length), shape = 'diamond', size = 3) +
+  geom_errorbar(PJN2_meandat, mapping = aes(x = Date, ymin = mean_length-sd_length, ymax = mean_length+sd_length), width = 1) +
+  geom_smooth(data = sled2_sols, aes(Date, L_allometric, color = params), se=FALSE)+
+  labs(x= "Date", y = "Blade length (cm)")
+
+ggplot() + 
+  geom_point(data = PJS2_meandat, aes(Date, mean_length), shape = 'diamond', size = 3) +
+  geom_errorbar(PJS2_meandat, mapping = aes(x = Date, ymin = mean_length-sd_length, ymax = mean_length+sd_length), width = 1) +
+  geom_smooth(data = dredge2_sols, aes(Date, L_allometric, color = params), se=FALSE)+
+  labs(x= "Date", y = "Blade length (cm)")
+
+ggplot() + 
+  geom_point(data = PJS1_meandat, aes(Date, mean_length), shape = 'diamond', size = 3) +
+  geom_errorbar(PJS1_meandat, mapping = aes(x = Date, ymin = mean_length-sd_length, ymax = mean_length+sd_length), width = 1) +
+  geom_smooth(data = dredge1_sols, aes(Date, L_allometric, color = params), se=FALSE)+
+  labs(x= "Date", y = "Blade length (cm)")
+
+ggplot() + 
+  geom_point(data = PJS2_meandat, aes(Date, mean_length), shape = 'diamond', size = 3) +
+  geom_errorbar(PJS2_meandat, mapping = aes(x = Date, ymin = mean_length-sd_length, ymax = mean_length+sd_length), width = 1) +
+  geom_smooth(data = dredge2_sols, aes(Date, L_allometric, color = params), se=FALSE)+
+  labs(x= "Date", y = "Blade length (cm)")

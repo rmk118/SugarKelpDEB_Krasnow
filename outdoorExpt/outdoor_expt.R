@@ -31,13 +31,25 @@ nitrate_enriched <- nitrate_data %>%
   summarise(nitrate = mean(umol)+7) %>%
   mutate(tank = "Enriched")
 
-nitrate <- rbind(nitrate, nitrate_enriched)
-rm(nitrate_enriched, nitrate_data)
+nitrate2 <- rbind(nitrate, nitrate_enriched)
 
-ggplot(data=nitrate)+
+ggplot(data=nitrate2)+
   geom_line(aes(x=date, y=nitrate, color=tank))+
-  labs(x=NULL, y="Nitrate (µmol)", color="Treatment")+
+  labs(x=NULL, y="Nitrate (µmol/L)", color="Treatment")+
   theme_light()
+
+library(zoo)
+# Create zoo objects
+zPAR <- zoo(PAR_forcing$PAR, PAR_forcing$date) # high freq
+zN <- zoo(nitrate$nitrate, as.POSIXct(nitrate$date))  # low freq
+
+# Merge series into one object
+z <- merge(zPAR,zN)
+# Interpolate calibration data (na.spline could also be used)
+z$zN <- na.approx(z$zN, rule=2)
+# Only keep index values from sample data
+Z <- z[index(zPAR),]
+Z <- as_tibble(Z) %>% mutate(PAR=zPAR, nitrate=zN, .keep="unused", date=PAR_forcing$date)
 
 #### Growth data ####
 growth_data <- read.csv("~/Downloads/MBL_SES/outdoorExpt/growth.csv") %>% 
