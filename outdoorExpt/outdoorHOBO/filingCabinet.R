@@ -1,5 +1,22 @@
 #library(parameters)
 
+
+# Add column to data frame that identifies which group each cross is in (control temps)
+mean_growth_by_cross_ctrl <- mean_growth_by_cross_ctrl %>%
+  mutate(group = case_when(
+    as.character(cross) %in% levels(high_stress$cross) ~ "high",
+    as.character(cross) %in% levels(low_stress$cross) ~ "low",
+    .default = "med"
+  ), group = as.factor(group))
+
+# Add column to data frame that identifies which group each cross is in (stress temps)
+mean_growth_by_cross_stress <- mean_growth_by_cross_stress %>%
+  mutate(group = case_when(
+    as.character(cross) %in% levels(high_stress$cross) ~ "high",
+    as.character(cross) %in% levels(low_stress$cross) ~ "low",
+    .default = "med"
+  ), group = as.factor(group))
+
 ##### temperature #####
 
 # weeks_3to5_hourly <- weeks_3to5 %>% 
@@ -393,3 +410,36 @@ nls_fun(df=lit_data_plus, type="stress", level="high")$std_rate==high_smooth
 #         #legend.box.margin = margin(0.1, 0.3, 0.8, 0.2, "lines"),
 #         #legend.key.size = unit(0.9, "lines"))+
 #   ggtitle("Control - all")
+
+#### old way of doing crosses ####
+cross144 <- c(growth_rates_no_flags %>% filter(cross==144, trt!="control") %>% mutate(rgr= if_else(rgr<0 | is.na(rgr), 0, rgr)) %>% summarise(mean(rgr)))
+
+ref_cross <- growth_rates_no_flags %>% group_by(cross, date, trt) %>%
+  filter(growth_hp > 0) %>% 
+  summarise(mean_growth = mean(growth_hp, na.rm=TRUE),
+            mean_rgr = mean(growth_rate_hp, na.rm=TRUE),
+            mean_rgr = mean(rgr, na.rm=TRUE),
+            max_rgr = max(rgr, na.rm=TRUE)) %>% add_week_fun() %>% 
+  left_join(weekly_means_degC) %>% 
+  filter(!(week %in% c(1,5)))  %>% 
+  group_by(cross) %>% 
+  filter(round(mean_temp,0)==20) %>% 
+  #summarize(ref_rgr = mean(max_rgr)) %>% 
+  summarize(ref_rgr = max(max_rgr)) %>% 
+  select(cross, ref_rgr)  %>%
+  add_row(cross=as.factor(144), ref_rgr=cross144[[1]])
+
+unh_cross<-growth_rates_no_flags %>% 
+  group_by(cross, date, trt, mean_temp) %>%
+  summarize(rgr = mean(rgr, na.rm=TRUE)) %>% 
+  left_join(ref_cross) %>% 
+  mutate(std_rate = rgr/ref_rgr) %>% 
+  add_ctrl_fun() %>% add_stress_fun() %>% 
+  mutate(ctrl_group = fct_relevel(ctrl_group, c("high", "med", "low")),stress_group = fct_relevel(stress_group, c("high", "med", "low"))) %>% 
+  ungroup() %>% 
+  mutate(paper="unh_cross2023", paper_full = paste(paper, stress_group, sep="_"), temp=mean_temp, rate=rgr, extra_info=paste(trt, cross,sep="_"), temp_K= temp + 273.15) %>%  #adding columns with identifying info
+  select(paper, paper_full, temp, rate,std_rate, extra_info, temp_K, ctrl_group, stress_group)
+
+# stress_cross_df <- map(.x=c(high="high", med="med", low="low"), .f=nls_fun, df=unh_cross, type="stress") %>% bind_rows(.id="level") %>% mutate(res="cross")
+
+# ctrl_cross_df <- map(.x=c(high="high", med="med", low="low"), .f=nls_fun, df=unh_cross, type="ctrl") %>% bind_rows(.id="level") %>% mutate(res="cross")

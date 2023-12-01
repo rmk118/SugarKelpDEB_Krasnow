@@ -1,6 +1,6 @@
 #Analysis of outdoor tank sporophyte heat stress growth expt
 #Ruby Krasnow
-#Last updated: Nov 28, 2023
+#Last updated: Nov 30, 2023
 
 library(tidyverse)
 library(patchwork)
@@ -117,34 +117,29 @@ high_stress <- mean_growth_by_cross_stress %>% slice_max(gr_hp, n=10) %>% mutate
 low_stress <- mean_growth_by_cross_stress %>% slice_min(gr_hp, n=10) %>% mutate(cross = fct_drop(cross))
 mid_stress <- anti_join(mean_growth_by_cross_stress, high_stress) %>% anti_join(low_stress) %>% mutate(cross = fct_drop(cross))
 
-# Add column to data frame that identifies which group each cross is in (control temps)
-mean_growth_by_cross_ctrl <- mean_growth_by_cross_ctrl %>%
-  mutate(group = case_when(
+add_ctrl_fun <- function(df) {
+  df_out<- df %>% mutate(ctrl_group = case_when(
     as.character(cross) %in% levels(high_ctrl$cross) ~ "high",
     as.character(cross) %in% levels(low_ctrl$cross) ~ "low",
     .default = "med"
-  ), group = as.factor(group))
+  ), ctrl_group = as.factor(ctrl_group),
+  ctrl_group = fct_relevel(ctrl_group, c("high", "med", "low")))
+  df_out
+}
 
-# Add column to data frame that identifies which group each cross is in (stress temps)
-mean_growth_by_cross_stress <- mean_growth_by_cross_stress %>%
-  mutate(group = case_when(
+add_stress_fun <- function(df) {
+  df_out<- df %>% mutate(stress_group = case_when(
     as.character(cross) %in% levels(high_stress$cross) ~ "high",
     as.character(cross) %in% levels(low_stress$cross) ~ "low",
     .default = "med"
-  ), group = as.factor(group))
+  ), stress_group = as.factor(stress_group),
+  stress_group = fct_relevel(stress_group, c("high", "med", "low")))
+  df_out
+}
 
 # Add columns to data frame that identifies which group each cross is in (both control and stress temps)
 growth_rates_no_flags <- growth_rates_no_flags %>%
-  mutate(ctrl_group = case_when(
-    as.character(cross) %in% levels(high_ctrl$cross) ~ "high",
-    as.character(cross) %in% levels(low_ctrl$cross) ~ "low",
-    .default = "med"),
-    stress_group = case_when(
-      as.character(cross) %in% levels(high_stress$cross) ~ "high",
-      as.character(cross) %in% levels(low_stress$cross) ~ "low",
-      .default = "med") ) %>%
-  mutate(ctrl_group = as_factor(ctrl_group),
-         stress_group = as_factor(stress_group)) %>% 
+  add_ctrl_fun() %>% add_stress_fun() %>% 
   mutate(ctrl_group = fct_relevel(ctrl_group, c("high", "med", "low")),stress_group = fct_relevel(stress_group, c("high", "med", "low"))) %>% 
 ungroup()
 
@@ -242,6 +237,32 @@ unh_ctrl <- weekly_growth_ctrl %>%
   mutate(paper="unh_ctrl_all2023", paper_full=paste(paper, ctrl_group, sep="_"), temp=mean_temp, rate=mean_rgr, extra_info=trt, temp_K=temp+273.15) %>% #adding columns with identifying info
   select(paper, paper_full, temp, rate, std_rgr, extra_info, temp_K, ctrl_group)
 
+
+
+##### Cross level ####
+
+###### Stress #####
+unh_cross_stress<-growth_rates_no_flags %>% 
+  group_by(cross, date, trt, mean_temp) %>%
+  summarize(rgr = mean(rgr, na.rm=TRUE)) %>% add_stress_fun() %>% 
+  left_join(ref_stress) %>% 
+  mutate(std_rate = rgr/ref_rgr) %>% mutate(std_rate = if_else(std_rate<0 | is.na(std_rate), 0, std_rate)) %>%
+  add_ctrl_fun() %>%
+  ungroup() %>% 
+  mutate(paper="unh_cross_stress2023", paper_full = paste(paper, stress_group, sep="_"), temp=mean_temp, rate=rgr, extra_info=paste(trt, cross,sep="_"), temp_K= temp + 273.15) %>%  #adding columns with identifying info
+  select(paper, paper_full, temp, rate,std_rate, extra_info, temp_K, ctrl_group, stress_group)
+
+###### Control #### 
+unh_cross_ctrl<-growth_rates_no_flags %>% 
+  group_by(cross, date, trt, mean_temp) %>%
+  summarize(rgr = mean(rgr, na.rm=TRUE)) %>% add_ctrl_fun() %>% 
+  left_join(ref_ctrl) %>% 
+  mutate(std_rate = rgr/ref_rgr) %>% mutate(std_rate = if_else(std_rate<0 | is.na(std_rate), 0, std_rate)) %>%
+  add_stress_fun() %>%
+  ungroup() %>% 
+  mutate(paper="unh_cross_ctrl2023", paper_full = paste(paper, ctrl_group, sep="_"), temp=mean_temp, rate=rgr, extra_info=paste(trt, cross,sep="_"), temp_K= temp + 273.15) %>%  #adding columns with identifying info
+  select(paper, paper_full, temp, rate,std_rate, extra_info, temp_K, ctrl_group, stress_group)
+
 ##### Replicate level ####
 
 ###### Stress #####
@@ -261,7 +282,6 @@ unh_ctrl_rep <- growth_rates_no_flags %>%
   ungroup() %>%
   mutate(paper="unh_ctrl_all2023", paper_full=paste(paper, ctrl_group, sep="_"), temp=mean_temp, rate=rgr, extra_info=trt, temp_K=temp+273.15) %>% #adding columns with identifying info
   select(paper, paper_full, temp, rate, std_rgr, extra_info, temp_K, ctrl_group,stress_group)
-
 
 #### Literature data ####
 lit_data <- read.csv("~/Downloads/MBL_SES/arrhenius_lit_data.csv") %>% 
@@ -397,19 +417,7 @@ all_lit_data <- rbind(lit_data_plus, lit_data_plus_rep, lit_data_plus_ctrl, lit_
          level = as_factor(level),
          level = fct_relevel(level, c("high", "med", "low", "lit")))
 
-(ggplot()+
-    geom_point(data=lit_data_plus, aes(x=temp, y=std_rate, color=stress_group)))+
-  (ggplot()+
-     geom_point(data=lit_data_plus_ctrl, aes(x=temp, y=std_rate, color=ctrl_group)))+
-  (ggplot()+
-     geom_point(data=lit_data_plus_rep, aes(x=temp, y=std_rate, color=stress_group)))+
-  (ggplot()+
-     geom_point(data=lit_data_plus_rep, aes(x=temp, y=std_rate, color=ctrl_group)))
-
 ggplot()+geom_point(data=all_lit_data, aes(x=temp, y=std_rate, color=level))+facet_grid(type~res)
-
-
-
 
 ### NLS incorporating new data ####
 
@@ -439,35 +447,32 @@ nls_fun <- function(df, type, level) {
   df_out
 }
 
-##### Stress means #### 
+#### Stress means
 stress_means_df <- map(.x=c(high="high", med="med", low="low"), .f=nls_fun, df=lit_data_plus, type="stress") %>% bind_rows(.id="level") %>% mutate(res="means")
 
-ggplot()+
-  geom_line(data=stress_means_df %>% group_by(level), aes(x=temp_smooth, y=std_rate, color=level))
-
-##### Stress reps #### 
+##### Stress reps
 stress_all_df <- map(.x=c(high="high", med="med", low="low"), .f=nls_fun, df=lit_data_plus_rep, type="stress") %>% bind_rows(.id="level") %>% mutate(res="all")
 
-ggplot()+
-  geom_line(data=stress_all_df %>% group_by(level), aes(x=temp_smooth, y=std_rate, color=level))
+#### Stress crosses
+stress_cross_df <- map(.x=c(high="high", med="med", low="low"), .f=nls_fun, df=unh_cross_stress, type="stress") %>% bind_rows(.id="level") %>% mutate(res="cross")
 
-##### Control means #### 
+##### Control means
 ctrl_means_df <- map(.x=c(high="high", med="med", low="low"), .f=nls_fun, df=lit_data_plus_ctrl, type="ctrl") %>% bind_rows(.id="level") %>% mutate(res="means")
 
-ggplot()+
-  geom_line(data=ctrl_means_df %>% group_by(level), aes(x=temp_smooth, y=std_rate, color=level))
+#### Control crosses
+ctrl_cross_df <- map(.x=c(high="high", med="med", low="low"), .f=nls_fun, df=unh_cross_ctrl, type="ctrl") %>% bind_rows(.id="level") %>% mutate(res="cross")
 
-##### Control reps #### 
+##### Control reps
 ctrl_all_df <- map(.x=c(high="high", med="med", low="low"), .f=nls_fun, df=lit_data_plus_rep_ctrl, type="ctrl") %>% bind_rows(.id="level") %>% mutate(res="all")
 
-ggplot()+
-  geom_line(data=ctrl_all_df %>% group_by(level), aes(x=temp_smooth, y=std_rate, color=level))
-
-all_calibrations <- rbind(stress_means_df, stress_all_df, ctrl_means_df, ctrl_all_df) %>% 
+all_calibrations <- rbind(stress_means_df, stress_all_df, ctrl_means_df, ctrl_all_df, stress_cross_df, ctrl_cross_df) %>% 
   mutate(level = as_factor(level),
          level = fct_expand(level, "lit"),
          level = fct_relevel(level, c("high", "med", "low", "lit")))
 
+params<-all_calibrations %>% select(T_A, T_H, T_AH,type,level,res) %>% distinct() %>% 
+  add_row(T_A=T_A, T_H=T_H,T_AH=T_AH,type="orig", level="orig", res="orig")%>% 
+  add_row(T_A=new_T_A, T_H=new_T_H,T_AH=new_T_AH,type="lit", level="lit", res="lit")
 
 ggplot()+
   geom_line(data=all_calibrations %>% group_by(type, level, res), aes(x=temp_smooth-273.15, y=std_rate, color=level), linewidth=2)+
@@ -505,4 +510,25 @@ ind_plot<-ggplot()+
   axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))
 
 means_plot/ind_plot
+
+ggplot()+
+  geom_line(data=all_calibrations %>% ungroup(), aes(x=temp_smooth-273.15, y=std_rate, color=level), linewidth=2)+
+  theme_bw()+
+  facet_grid(type~res)+
+  annotate(geom='line', x=temp_smooth-273.15,y=y_smooth_venolia)+
+  labs(x="Temperature (°C)", y="Standardized rate", color=NULL)+
+  scale_color_manual(values=c("high"="#dd4124", "med"="#edd746","low"='#0f85a0'),
+                     breaks=c("high", "med", "low"),
+                     labels=c("high"="High", "med"="Medium", "low"="Low"))
+
+myPlot<-ggplot()+
+  geom_line(data=all_calibrations %>% group_by(type, level, res) %>% filter(type=="stress", res=="all"), aes(x=temp_smooth-273.15, y=std_rate, color=level), linewidth=2)+
+  theme_bw()+
+  labs(x="Temperature (°C)", y="Standardized rate", color=NULL)+
+  scale_color_manual(values=c("high"="#dd4124", "med"="#edd746","low"='#0f85a0'),
+                     breaks=c("high", "med", "low"),
+                     labels=c("high"="High", "med"="Medium", "low"="Low"))+
+  theme(legend.position = "none")+
+  ylim(0,2.6)
+myPlot
 

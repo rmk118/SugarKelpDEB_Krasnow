@@ -1,4 +1,5 @@
-### Intro ################################################################################################################# 
+### Point Judith Point Year 1 ################################################################################################################# 
+
 #Site names here begin with names other than those used in the manuscript
 #Sled = Pt Judith Pond N
 #Dredge = Pt Judith Pond S
@@ -14,8 +15,6 @@ library(deSolve)
 library(tidyverse)
 library(lubridate)
 library(gridExtra)
-#library(gdata)
-#library(pracma)
 library(Metrics)
 library(patchwork)
 
@@ -114,21 +113,29 @@ params_Lo <- c(#maximum volume-specific assimilation rate of N before temperatur
                #temperature at which rate parameters are given
                T_0 = 20 + 273.15) # K
 
+# New (refit from literature)
+new_params_for_model <- params_Lo
+new_params_for_model[c("T_A", "T_H", "T_AH")]<-c(new_T_A, new_T_H, new_T_AH)
+
+# Means
 high_params_for_model <- params_Lo
 med_params_for_model <- params_Lo
 low_params_for_model <- params_Lo
-new_params_for_model <- params_Lo
-
-# high_params_for_model[c("T_A", "T_H", "T_AH")]<-c(high_T_A, high_T_H,high_T_AH)
-# med_params_for_model[c("T_A", "T_H", "T_AH")]<-c(med_T_A, med_T_H,med_T_AH)
-# low_params_for_model[c("T_A", "T_H", "T_AH")]<-c(low_T_A, low_T_H,low_T_AH)
 
 high_params_for_model[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="high", res=="means") %>% select(T_A, T_H, T_AH)
 med_params_for_model[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="med", res=="means") %>% select(T_A, T_H, T_AH)
 low_params_for_model[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="low", res=="means") %>% select(T_A, T_H, T_AH)
 
-new_params_for_model[c("T_A", "T_H", "T_AH")]<-c(new_T_A, new_T_H, new_T_AH)
+# Crosses
+high_params_for_model_cross <- params_Lo
+med_params_for_model_cross <- params_Lo
+low_params_for_model_cross <- params_Lo
 
+high_params_for_model_cross[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="high", res=="all") %>% select(T_A, T_H, T_AH)
+med_params_for_model_cross[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="med", res=="all") %>% select(T_A, T_H, T_AH)
+low_params_for_model_cross[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="low", res=="all") %>% select(T_A, T_H, T_AH)
+
+# Replicates
 high_params_for_model_rep <- params_Lo
 med_params_for_model_rep <- params_Lo
 low_params_for_model_rep <- params_Lo
@@ -243,6 +250,13 @@ W <- 0.05
 sol_low_Sled1 <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = low_params_for_model)
 
 W <- 0.05
+sol_high_Sled1_cross <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = high_params_for_model_cross)
+W <- 0.05
+sol_med_Sled1_cross <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = med_params_for_model_cross)
+W <- 0.05
+sol_low_Sled1_cross <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = low_params_for_model_cross)
+
+W <- 0.05
 sol_high_Sled1_rep <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = high_params_for_model_rep)
 W <- 0.05
 sol_med_Sled1_rep <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = med_params_for_model_rep)
@@ -264,6 +278,13 @@ W <- 0.05
 sol_med_Sled1_plus2 <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = med_params_for_model)
 W <- 0.05
 sol_low_Sled1_plus2 <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = low_params_for_model)
+
+W <- 0.05
+sol_high_Sled1_plus2_cross <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = high_params_for_model_cross)
+W <- 0.05
+sol_med_Sled1_plus2_cross <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = med_params_for_model_cross)
+W <- 0.05
+sol_low_Sled1_plus2_cross <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = low_params_for_model_cross)
 
 W <- 0.05
 sol_high_Sled1_plus2_rep <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = high_params_for_model_rep)
@@ -308,6 +329,20 @@ W <- 0.05
 sol_med_Sled2 <- ode(y = state_Lo, t = times_Lo_Sled2, func = rates_Lo, parms = med_params_for_model)
 W <- 0.05
 sol_low_Sled2 <- ode(y = state_Lo, t = times_Lo_Sled2, func = rates_Lo, parms = low_params_for_model)
+
+W <- 0.05
+sol_high_Sled2_cross <- ode(y = state_Lo, t = times_Lo_Sled2, func = rates_Lo, parms = high_params_for_model_cross)
+W <- 0.05
+sol_med_Sled2_cross <- ode(y = state_Lo, t = times_Lo_Sled2, func = rates_Lo, parms = med_params_for_model_cross)
+W <- 0.05
+sol_low_Sled2_cross <- ode(y = state_Lo, t = times_Lo_Sled2, func = rates_Lo, parms = low_params_for_model_cross)
+
+W <- 0.05
+sol_high_Sled2_rep <- ode(y = state_Lo, t = times_Lo_Sled2, func = rates_Lo, parms = high_params_for_model_rep)
+W <- 0.05
+sol_med_Sled2_rep <- ode(y = state_Lo, t = times_Lo_Sled2, func = rates_Lo, parms = med_params_for_model_rep)
+W <- 0.05
+sol_low_Sled2_rep <- ode(y = state_Lo, t = times_Lo_Sled2, func = rates_Lo, parms = low_params_for_model_rep)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Setting up the forcing functions with field data for
 ### Judith S (dredge) line 1 ####
@@ -340,6 +375,19 @@ sol_med_Dredge1 <- ode(y = state_Lo, t = times_Lo_Dredge1, func = rates_Lo, parm
 W <- 0.05
 sol_low_Dredge1 <- ode(y = state_Lo, t = times_Lo_Dredge1, func = rates_Lo, parms = low_params_for_model)
 
+W <- 0.05
+sol_high_Dredge1_cross <- ode(y = state_Lo, t = times_Lo_Dredge1, func = rates_Lo, parms = high_params_for_model_cross)
+W <- 0.05
+sol_med_Dredge1_cross <- ode(y = state_Lo, t = times_Lo_Dredge1, func = rates_Lo, parms = med_params_for_model_cross)
+W <- 0.05
+sol_low_Dredge1_cross <- ode(y = state_Lo, t = times_Lo_Dredge1, func = rates_Lo, parms = low_params_for_model_cross)
+
+W <- 0.05
+sol_high_Dredge1_rep <- ode(y = state_Lo, t = times_Lo_Dredge1, func = rates_Lo, parms = high_params_for_model_rep)
+W <- 0.05
+sol_med_Dredge1_rep <- ode(y = state_Lo, t = times_Lo_Dredge1, func = rates_Lo, parms = med_params_for_model_rep)
+W <- 0.05
+sol_low_Dredge1_rep <- ode(y = state_Lo, t = times_Lo_Dredge1, func = rates_Lo, parms = low_params_for_model_rep)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Setting up the forcing functions with field data for
 ### Judith S line 2 ####
@@ -372,6 +420,20 @@ sol_med_Dredge2 <- ode(y = state_Lo, t = times_Lo_Dredge2, func = rates_Lo, parm
 W <- 0.05
 sol_low_Dredge2 <- ode(y = state_Lo, t = times_Lo_Dredge2, func = rates_Lo, parms = low_params_for_model)
 
+W <- 0.05
+sol_high_Dredge2_cross <- ode(y = state_Lo, t = times_Lo_Dredge2, func = rates_Lo, parms = high_params_for_model_cross)
+W <- 0.05
+sol_med_Dredge2_cross <- ode(y = state_Lo, t = times_Lo_Dredge2, func = rates_Lo, parms = med_params_for_model_cross)
+W <- 0.05
+sol_low_Dredge2_cross <- ode(y = state_Lo, t = times_Lo_Dredge2, func = rates_Lo, parms = low_params_for_model_cross)
+
+W <- 0.05
+sol_high_Dredge2_rep <- ode(y = state_Lo, t = times_Lo_Dredge2, func = rates_Lo, parms = high_params_for_model_rep)
+W <- 0.05
+sol_med_Dredge2_rep <- ode(y = state_Lo, t = times_Lo_Dredge2, func = rates_Lo, parms = med_params_for_model_rep)
+W <- 0.05
+sol_low_Dredge2_rep <- ode(y = state_Lo, t = times_Lo_Dredge2, func = rates_Lo, parms = low_params_for_model_rep)
+
 
 ###### Convert DeSolve solutions into data frame for broader plotting use ####
 
@@ -391,11 +453,13 @@ dredge2_date_seq<-seq(as_datetime("2017-11-29 12:00:00"), as_datetime("2018-04-2
 #Example applied to one deSolve solution
 #sol_Sled1 <- clean_ode_sol(sol_Sled1, sled1_date_seq, T_Sled1_Y1)
 
-sled1_sols <- list(orig=sol_Sled1, new=sol_new_Sled1, high=sol_high_Sled1, med=sol_med_Sled1, low=sol_low_Sled1, high_rep=sol_high_Sled1_rep, med_rep=sol_med_Sled1_rep, low_rep=sol_low_Sled1_rep)
+sled1_sols <- list(orig=sol_Sled1, new=sol_new_Sled1, high=sol_high_Sled1, med=sol_med_Sled1, low=sol_low_Sled1, high_cross=sol_high_Sled1_cross, med_cross=sol_med_Sled1_cross, low_cross=sol_low_Sled1_cross, high_rep=sol_high_Sled1_rep, med_rep=sol_med_Sled1_rep, low_rep=sol_low_Sled1_rep)
 
-sled2_sols <- list(orig=sol_Sled2, new=sol_new_Sled2, high=sol_high_Sled2, med=sol_med_Sled2, low=sol_low_Sled2)
-dredge1_sols <- list(orig=sol_Dredge1, new=sol_new_Dredge1, high=sol_high_Dredge1, med=sol_med_Dredge1, low=sol_low_Dredge1)
-dredge2_sols <- list(orig=sol_Dredge2, new=sol_new_Dredge2,high=sol_high_Dredge2, med=sol_med_Dredge2, low=sol_low_Dredge2)
+sled2_sols <- list(orig=sol_Sled2, new=sol_new_Sled2, high=sol_high_Sled2, med=sol_med_Sled2, low=sol_low_Sled2, high_cross=sol_high_Sled2_cross, med_cross=sol_med_Sled2_cross, low_cross=sol_low_Sled2_cross, high_rep=sol_high_Sled2_rep, med_rep=sol_med_Sled2_rep, low_rep=sol_low_Sled2_rep)
+
+dredge1_sols <- list(orig=sol_Dredge1, new=sol_new_Dredge1, high=sol_high_Dredge1, med=sol_med_Dredge1, low=sol_low_Dredge1, high_cross=sol_high_Dredge1_cross, med_cross=sol_med_Dredge1_cross, low_cross=sol_low_Dredge1_cross, high_rep=sol_high_Dredge1_rep, med_rep=sol_med_Dredge1_rep, low_rep=sol_low_Dredge1_rep)
+
+dredge2_sols <- list(orig=sol_Dredge2, new=sol_new_Dredge2, high=sol_high_Dredge2, med=sol_med_Dredge2, low=sol_low_Dredge2, high_cross=sol_high_Dredge2_cross, med_cross=sol_med_Dredge2_cross, low_cross=sol_low_Dredge2_cross, high_rep=sol_high_Dredge2_rep, med_rep=sol_med_Dredge2_rep, low_rep=sol_low_Dredge2_rep)
 
 sled1_sols_plus2 <- list(orig=sol_Sled1_plus2, new=sol_new_Sled1_plus2, high=sol_high_Sled1_plus2, med=sol_med_Sled1_plus2, low=sol_low_Sled1_plus2, high_rep=sol_high_Sled1_plus2_rep, med_rep=sol_med_Sled1_plus2_rep, low_rep=sol_low_Sled1_plus2_rep)
 
@@ -407,8 +471,7 @@ dredge2_sols<- map(dredge2_sols, clean_ode_sol, dredge2_date_seq, T_Dredge2_Y1, 
 sled1_sols_plus2<- map(sled1_sols_plus2, clean_ode_sol, sled1_date_seq, T_Sled1_plus2, "Point Judith Pond N 1") %>% bind_rows(.id = "params")
 
 #combine all original field data into one dataframe
-#sol_all <- rbind(sol_Dredge1, sol_Dredge2, sol_Sled1, sol_Sled2)
-sol_all <- rbind(dredge1_sols %>% filter(params=="orig"),
+sol_all_orig <- rbind(dredge1_sols %>% filter(params=="orig"),
                  dredge2_sols %>% filter(params=="orig"),
                  sled1_sols %>% filter(params=="orig"),
                  sled2_sols %>% filter(params=="orig"))
@@ -416,7 +479,7 @@ sol_all <- rbind(dredge1_sols %>% filter(params=="orig"),
 ##### Model Plots (Fig 3, 6, 8, 9) #####
 #Figure 3: combining all irradiance forcings
 plot_I_Y1 <- ggplot() + 
-  geom_line(data = sol_all[sol_all$source == "Point Judith Pond N 1",], aes(Date, I), color = "gray0") +
+  geom_line(data = sol_all_orig[sol_all_orig$source == "Point Judith Pond N 1",], aes(Date, I), color = "gray0") +
   theme_bw() +
   xlim(as.POSIXct(c("2017-10-30 23:00:00", "2018-06-01 23:00:00"))) +
   ylim(0,4) +
@@ -428,7 +491,7 @@ plot_I_Y1
 
 #Figure 6
 #Temperature y1 plot
-plot_T_Y1 <- ggplot(data = sol_all, aes(Date, Temp_C, color = source)) + 
+plot_T_Y1 <- ggplot(data = sol_all_orig, aes(Date, Temp_C, color = source)) + 
   geom_line() +
   scale_color_manual(values = c("coral", "darkgoldenrod1", "firebrick", "black")) +
   ylim(-5, 20) +
@@ -445,16 +508,16 @@ Sled_WSA$Date <- as.POSIXct(c("2018-04-11 23:0:0", "2018-03-20 23:0:0", "2018-02
 Dredge_WSA$Date <- as.POSIXct(c("2018-03-20 23:0:0", "2018-04-11 23:0:0", "2018-01-24 23:0:0", "2017-11-01 23:0:0", "2018-02-14 23:0:0"))
 
 dredge_wsa_test <- Dredge_WSA %>% select(Date, NitrateNitrite_uM) %>% 
-  add_row(Date=as_datetime("2017-11-29 23:0:0"), NitrateNitrite_uM= sol_all %>% filter(Date=="2017-11-29 23:00:00" & source=="Point Judith Pond S 1") %>% pull(N)*10^6) %>% 
-  add_row(Date=as_datetime("2018-04-22 23:00:00"), NitrateNitrite_uM= sol_all %>% filter(Date=="2018-04-12 3:00:00" & source=="Point Judith Pond S 2") %>% pull(N)*10^6)
+  add_row(Date=as_datetime("2017-11-29 23:0:0"), NitrateNitrite_uM= sol_all_orig %>% filter(Date=="2017-11-29 23:00:00" & source=="Point Judith Pond S 1") %>% pull(N)*10^6) %>% 
+  add_row(Date=as_datetime("2018-04-22 23:00:00"), NitrateNitrite_uM= sol_all_orig %>% filter(Date=="2018-04-12 3:00:00" & source=="Point Judith Pond S 2") %>% pull(N)*10^6)
 
 sled_wsa_test <- Sled_WSA %>% select(Date, NitrateNitrite_uM) %>% filter(Date < "2018-04-20")%>% 
-  add_row(Date=as_datetime("2018-04-17 12:00:00"), NitrateNitrite_uM= sol_all %>% filter(Date==as.POSIXct("2018-04-17 12:00:00", tz="GMT") & source=="Point Judith Pond N 2") %>% pull(N)*10^6)
+  add_row(Date=as_datetime("2018-04-17 12:00:00"), NitrateNitrite_uM= sol_all_orig %>% filter(Date==as.POSIXct("2018-04-17 12:00:00", tz="GMT") & source=="Point Judith Pond N 2") %>% pull(N)*10^6)
 
 plot_N <- ggplot() + 
   geom_point(data = sled_wsa_test, aes(Date, NitrateNitrite_uM)) +
   geom_point(data = dredge_wsa_test, aes(Date, NitrateNitrite_uM)) +
-  geom_line(data = sol_all, aes(Date, N*1000000, color = source), size = 1) +
+  geom_line(data = sol_all_orig, aes(Date, N*1000000, color = source), size = 1) +
   scale_color_manual(values = c("coral","darkgoldenrod1","black","firebrick")) +
   theme_bw() +
   theme(axis.line = element_line(colour = "black"), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_blank()) +
@@ -466,8 +529,8 @@ plot_N
 
 #Figure 8
 plot_J_EC_R_PJ <- ggplot() +
-  geom_line(data = sol_all[sol_all$source == "Point Judith Pond S 1",], aes(Date, J_EC_R, color = source)) +
-  geom_line(data = sol_all[sol_all$source == "Point Judith Pond N 1",], aes(Date, J_EC_R, color = source)) +
+  geom_line(data = sol_all_orig[sol_all_orig$source == "Point Judith Pond S 1",], aes(Date, J_EC_R, color = source)) +
+  geom_line(data = sol_all_orig[sol_all_orig$source == "Point Judith Pond N 1",], aes(Date, J_EC_R, color = source)) +
   scale_color_grey() +
   xlim(as.POSIXct(c("2017-10-30 23:00:00", "2018-06-01 23:00:00"))) +
   theme_bw() +
@@ -479,8 +542,8 @@ plot_J_EC_R_PJ <- ggplot() +
 
 
 plot_J_EN_R_PJ <- ggplot() +
-  geom_line(data = sol_all[sol_all$source == "Point Judith Pond S 1",], aes(Date, J_EN_R, color = source)) +
-  geom_line(data = sol_all[sol_all$source == "Point Judith Pond N 1",], aes(Date, J_EN_R, color = source)) +
+  geom_line(data = sol_all_orig[sol_all_orig$source == "Point Judith Pond S 1",], aes(Date, J_EN_R, color = source)) +
+  geom_line(data = sol_all_orig[sol_all_orig$source == "Point Judith Pond N 1",], aes(Date, J_EN_R, color = source)) +
   scale_color_grey() +
   xlim(as.POSIXct(c("2017-10-30 23:00:00", "2018-06-01 23:00:00"))) +
   theme_bw() +
@@ -492,7 +555,8 @@ plot_J_EN_R_PJ <- ggplot() +
 
 plot_J_EC_R_PJ/plot_J_EN_R_PJ
 
-##### Kelp Field Data Comparison plot (Figure 7) ####
+### Kelp Field Data Comparison plot (Figure 7) ####
+
 #import field data
 KelpY1 <- read.csv("Year1kelpdata.csv", header = TRUE, fileEncoding="UTF-8-BOM")
 names(KelpY1)[2] <- "Site"
@@ -501,31 +565,55 @@ KelpY1$Date <- mdy(KelpY1$SamplingDate)
 KelpY1$SiteLine <- paste(KelpY1$Site, KelpY1$Line)
 KelpY1 <- filter(KelpY1, SiteLine != "Narragansett Bay N 2")
 
+###### Combine with model data #####
 
+#Point Judith Point N (sled) Line 1
+PJN1_meandat <- KelpY1[KelpY1$SiteLine == "Point Judith Pond N 1",] %>%
+  group_by(Date) %>%
+  summarize(mean_length = mean(Length, na.rm = TRUE), sd_length = sd(Length, na.rm = TRUE))
+PJN1_meandat$Date <- as.POSIXct(PJN1_meandat$Date)
+PJN1_meandat_sub <- PJN1_meandat[2:6,]
+erPJN1 <- merge(PJN1_meandat_sub, sol_all_orig[sol_all_orig$source == "Point Judith Pond N 1",], all.x = TRUE)
+PJN1_rmse <- rmse(erPJN1$mean_length, erPJN1$L_allometric)
+
+#Point Judith Point N (sled) Line 2
+PJN2_meandat <- KelpY1[KelpY1$SiteLine == "Point Judith Pond N 2",] %>%
+  group_by(Date) %>%
+  summarize(mean_length = mean(Length, na.rm = TRUE), sd_length = sd(Length, na.rm = TRUE))
+PJN2_meandat$Date <- as.POSIXct(PJN2_meandat$Date)
+PJN2_meandat_sub <- PJN2_meandat[2:6,]
+erPJN2 <- merge(PJN2_meandat_sub, sol_all_orig[sol_all_orig$source == "Point Judith Pond N 2",], all.x = TRUE)
+PJN2_rmse <- rmse(erPJN2$mean_length, erPJN2$L_allometric)
+
+#Point Judith Point S (dredge) Line 1
 PJS1_meandat <- KelpY1[KelpY1$SiteLine == "Point Judith Pond S 1",] %>%
   group_by(Date) %>%
   summarize(mean_length = mean(Length, na.rm = TRUE), sd_length = sd(Length, na.rm = TRUE))
 PJS1_meandat$Date <- as.POSIXct(PJS1_meandat$Date)
 PJS1_meandat_sub <- PJS1_meandat[2:6,]
-erPJS1 <- merge(PJS1_meandat_sub, sol_all[sol_all$source == "Point Judith Pond S 1",], all.x = TRUE)
+erPJS1 <- merge(PJS1_meandat_sub, sol_all_orig[sol_all_orig$source == "Point Judith Pond S 1",], all.x = TRUE)
+# erPJS1 <- merge(PJS1_meandat_sub, dredge1_sols %>% filter(source=="Point Judith Pond S 1", params=="low"), all.x = TRUE)
 PJS1_rmse <- rmse(erPJS1$mean_length, erPJS1$L_allometric)
 
+#Point Judith Point S (dredge) Line 2
 PJS2_meandat <- KelpY1[KelpY1$SiteLine == "Point Judith Pond S 2",] %>%
   group_by(Date) %>%
   summarize(mean_length = mean(Length, na.rm = TRUE), sd_length = sd(Length, na.rm = TRUE))
 PJS2_meandat$Date <- as.POSIXct(PJS2_meandat$Date)
 PJS2_meandat_sub <- PJS2_meandat[2:6,]
-erPJS2 <- merge(PJS2_meandat_sub, sol_all[sol_all$source == "Point Judith Pond S 2",], all.x = TRUE)
+erPJS2 <- merge(PJS2_meandat_sub, sol_all_orig[sol_all_orig$source == "Point Judith Pond S 2",], all.x = TRUE)
+erPJS2 <- merge(PJS2_meandat_sub, dredge2_sols %>% filter(source=="Point Judith Pond S 2", params=="low"), all.x = TRUE)
 PJS2_rmse <- rmse(erPJS2$mean_length, erPJS2$L_allometric)
 
+###### Plots #####
 PJS1_2 <- ggplot() + 
   geom_point(data = PJS1_meandat, aes(Date, mean_length), shape = 'diamond', size = 3) +
   geom_errorbar(PJS1_meandat, mapping = aes(x = Date, ymin = mean_length-sd_length, ymax = mean_length+sd_length), width = 1) +
-  geom_smooth(data = sol_all[sol_all$source == "Point Judith Pond S 1",], aes(Date, L_allometric, color = source)) +
+  geom_smooth(data = sol_all_orig[sol_all_orig$source == "Point Judith Pond S 1",], aes(Date, L_allometric, color = source)) +
   geom_label(aes(as.POSIXct("2018-04-01 01:00:00"), 250, hjust = 1), label = sprintf("RMSE: %f", PJS1_rmse)) +
   geom_point(data = PJS2_meandat, aes(Date, mean_length), color = "gray50", size = 3) +
   geom_errorbar(PJS2_meandat, mapping = aes(x = Date, ymin = mean_length-sd_length, ymax = mean_length+sd_length), width = 1, color = "gray50") +
-  geom_smooth(data = sol_all[sol_all$source == "Point Judith Pond S 2",], aes(Date, L_allometric, color = source)) +
+  geom_smooth(data = sol_all_orig[sol_all_orig$source == "Point Judith Pond S 2",], aes(Date, L_allometric, color = source)) +
   geom_label(aes(as.POSIXct("2018-04-01 01:00:00"), 230, hjust = 1), label = sprintf("RMSE: %f", PJS2_rmse), color = "gray50") +
   ylim(0, 258) +
   xlim(as.POSIXct(c("2017-10-30 23:00:00", "2018-04-24 23:00:00"))) +
@@ -537,31 +625,14 @@ PJS1_2 <- ggplot() +
   ggtitle("Point Judith Pond S") +
   theme(legend.position="none")
 
-PJN1_meandat <- KelpY1[KelpY1$SiteLine == "Point Judith Pond N 1",] %>%
-  group_by(Date) %>%
-  summarize(mean_length = mean(Length, na.rm = TRUE), sd_length = sd(Length, na.rm = TRUE))
-PJN1_meandat$Date <- as.POSIXct(PJN1_meandat$Date)
-PJN1_meandat_sub <- PJN1_meandat[2:6,]
-erPJN1 <- merge(PJN1_meandat_sub, sol_all[sol_all$source == "Point Judith Pond N 1",], all.x = TRUE)
-PJN1_rmse <- rmse(erPJN1$mean_length, erPJN1$L_allometric)
-
-PJN2_meandat <- KelpY1[KelpY1$SiteLine == "Point Judith Pond N 2",] %>%
-  group_by(Date) %>%
-  summarize(mean_length = mean(Length, na.rm = TRUE), sd_length = sd(Length, na.rm = TRUE))
-PJN2_meandat$Date <- as.POSIXct(PJN2_meandat$Date)
-PJN2_meandat_sub <- PJN2_meandat[2:6,]
-erPJN2 <- merge(PJN2_meandat_sub, sol_all[sol_all$source == "Point Judith Pond N 2",], all.x = TRUE)
-PJN2_rmse <- rmse(erPJN2$mean_length, erPJN2$L_allometric)
-
-
 PJN1_2 <- ggplot() + 
   geom_point(data = PJN1_meandat, aes(Date, mean_length), shape = 'diamond', size = 3) +
   geom_errorbar(PJN1_meandat, mapping = aes(x = Date, ymin = mean_length-sd_length, ymax = mean_length+sd_length), width = 1) +
-  geom_smooth(data = sol_all[sol_all$source == "Point Judith Pond N 1",], aes(Date, L_allometric, color = source)) +
+  geom_smooth(data = sol_all_orig[sol_all_orig$source == "Point Judith Pond N 1",], aes(Date, L_allometric, color = source)) +
   geom_label(aes(as.POSIXct("2018-04-24 01:00:00"), 250, hjust = 1), label = sprintf("RMSE: %f", PJN1_rmse)) +
   geom_point(data = PJN2_meandat, aes(Date, mean_length), color ="gray50", size = 3) +
   geom_errorbar(PJN2_meandat, mapping = aes(x = Date, ymin = mean_length-sd_length, ymax = mean_length+sd_length), width = 1, color = "gray50") +
-  geom_smooth(data = sol_all[sol_all$source == "Point Judith Pond N 2",], aes(Date, L_allometric, color = source)) +
+  geom_smooth(data = sol_all_orig[sol_all_orig$source == "Point Judith Pond N 2",], aes(Date, L_allometric, color = source)) +
   geom_label(aes(as.POSIXct("2018-04-24 01:00:00"), 230, hjust = 1), label = sprintf("RMSE: %f", PJN2_rmse), color = "gray50") +
   ylim(0, 258) +
   xlim(as.POSIXct(c("2017-10-30 23:00:00", "2018-04-24 23:00:00"))) +
@@ -575,6 +646,10 @@ PJN1_2 <- ggplot() +
 
 PJS1_2+PJN1_2
 
+#combine all original field data into one dataframe
+sol_all <- rbind(dredge1_sols,dredge2_sols,sled1_sols, sled2_sols)
 
-library(NCmisc)
-list.functions.in.file("KelpDEB_Run_Krasnow.R")
+ggplot() +
+  geom_smooth(data = sol_all, aes(Date, L_allometric, color = params), se=FALSE)+
+  labs(x= "Date", y = "Blade length (cm)")+
+  facet_wrap(~source)

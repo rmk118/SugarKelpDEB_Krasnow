@@ -1,6 +1,6 @@
 #Organizing outdoor tank sporophyte heat stress HOBO data
 #Ruby Krasnow
-#Last updated: Nov 27, 2023
+#Last updated: Nov 30, 2023
 
 library(tidyverse)
 library(patchwork)
@@ -75,11 +75,11 @@ all_hourly <- all_hourly %>% mutate(week = case_when(
   date %within% week5 ~ 5
 ))
 
-
 weekly_means_degC <- all_hourly %>% group_by(week, trt) %>% 
   summarise(mean_temp = mean(temp_hourly)) %>% 
   mutate(mean_temp = round(mean_temp,2)) %>% arrange(trt)
 
+# Temperature
 ggplot(data=all_hourly %>% filter(date < ymd("2023-07-18")))+
   geom_vline(xintercept = c(as_datetime(c("2023-06-12","2023-06-20","2023-06-27","2023-07-04","2023-07-11","2023-07-18"))), linetype="dashed")+
   geom_line(aes(x=date, y=temp_hourly, color=trt))+
@@ -91,10 +91,8 @@ ggplot(data=all_hourly %>% filter(date < ymd("2023-07-18")))+
         axis.title.x = element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)),
         axis.title = element_text(size=13), axis.text = element_text(size=14))+
   scale_color_hue(labels = c("Control + N", "Heat + N", "Heat"))
-  
 
-# weekly_means_all <- bind_rows(list(high=weekly_means_degC, med=weekly_means_degC, low=weekly_means_degC), .id="stress_group")
-
+# PAR
 ggplot(data=all_hourly %>% filter(date < ymd("2023-07-18"), PAR_hourly<20) %>% group_by(date) %>% summarise(PAR=mean(PAR_hourly)))+
   geom_vline(xintercept = c(as_datetime(c("2023-06-12","2023-06-20","2023-06-27","2023-07-04","2023-07-11","2023-07-18"))), linetype="dashed")+
   geom_line(aes(x=date, y=PAR*60*60/10^4.25))+
@@ -104,6 +102,5 @@ ggplot(data=all_hourly %>% filter(date < ymd("2023-07-18"), PAR_hourly<20) %>% g
   theme(text = element_text(size=14),
         axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0)),
         axis.title.x = element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)),
-        axis.title = element_text(size=13), axis.text = element_text(size=14))+
-  scale_color_hue(labels = c("Control + N", "Heat + N", "Heat"))
+        axis.title = element_text(size=13), axis.text = element_text(size=14))
 
