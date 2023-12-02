@@ -450,3 +450,35 @@ unh_cross<-growth_rates_no_flags %>%
 #(w_V+0.01*w_EN+0.1*w_EC)* 5
 
 #state_Lo_UNH <- c(m_EC = 0.08, m_EN = 0.008, M_V = 1/(w_V+0.008*w_EN+0.08*w_EC))
+
+
+# New (refit from literature)
+new_params_for_model <- params_Lo
+new_params_for_model[c("T_A", "T_H", "T_AH")]<-c(new_T_A, new_T_H, new_T_AH)
+
+# Means
+high_params_for_model <- params_Lo
+med_params_for_model <- params_Lo
+low_params_for_model <- params_Lo
+
+high_params_for_model[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="high", res=="means") %>% select(T_A, T_H, T_AH)
+med_params_for_model[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="med", res=="means") %>% select(T_A, T_H, T_AH)
+low_params_for_model[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="low", res=="means") %>% select(T_A, T_H, T_AH)
+
+# Crosses
+high_params_for_model_cross <- params_Lo
+med_params_for_model_cross <- params_Lo
+low_params_for_model_cross <- params_Lo
+
+high_params_for_model_cross[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="high", res=="all") %>% select(T_A, T_H, T_AH)
+med_params_for_model_cross[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="med", res=="all") %>% select(T_A, T_H, T_AH)
+low_params_for_model_cross[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="low", res=="all") %>% select(T_A, T_H, T_AH)
+
+# Replicates
+high_params_for_model_rep <- params_Lo
+med_params_for_model_rep <- params_Lo
+low_params_for_model_rep <- params_Lo
+
+high_params_for_model_rep[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="high", res=="all") %>% select(T_A, T_H, T_AH)
+med_params_for_model_rep[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="med", res=="all") %>% select(T_A, T_H, T_AH)
+low_params_for_model_rep[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="low", res=="all") %>% select(T_A, T_H, T_AH)

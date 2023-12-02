@@ -55,7 +55,7 @@ w_O2 <- 32 #g/mol
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ##### Parameters compiled #####
-params_Lo <- c(#maximum volume-specific assimilation rate of N before temperature correction
+params_Lo_unh <- c(#maximum volume-specific assimilation rate of N before temperature correction
   JENAM = 1.5e-4, #mol N / molV / h
   #half saturation constant of N uptake
   K_N = 2.5e-6, #molNO3 and NO2/L
@@ -80,10 +80,10 @@ params_Lo <- c(#maximum volume-specific assimilation rate of N before temperatur
   #Yield factor of photon to O2
   y_LO2 = 0.125, #molO2 molγ –1
   #reserve turnover
-  kE_C = 0.02, #0.05, #1/h
-  kE_N = 0.04, #0.01, #1/h
+  kE_C = 0.02,
+  kE_N = 0.04,
   #fraction of rejection flux from growth SU incorporated back into i-reserve
-  kappa_Ei = 0.9, #dimensionless
+  kappa_Ei = 0.8, #dimensionless
   #yield of structure on N reserve (percent of N in structure)
   y_EN_V = 0.04, #mol N/mol V
   #yield of structure on C reserve (percent of C in structure)
@@ -105,37 +105,6 @@ params_Lo <- c(#maximum volume-specific assimilation rate of N before temperatur
   #temperature at which rate parameters are given
   T_0 = 20 + 273.15) # K
 
-# New (refit from literature)
-new_params_for_model <- params_Lo
-new_params_for_model[c("T_A", "T_H", "T_AH")]<-c(new_T_A, new_T_H, new_T_AH)
-
-# Means
-high_params_for_model <- params_Lo
-med_params_for_model <- params_Lo
-low_params_for_model <- params_Lo
-
-high_params_for_model[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="high", res=="means") %>% select(T_A, T_H, T_AH)
-med_params_for_model[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="med", res=="means") %>% select(T_A, T_H, T_AH)
-low_params_for_model[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="low", res=="means") %>% select(T_A, T_H, T_AH)
-
-# Crosses
-high_params_for_model_cross <- params_Lo
-med_params_for_model_cross <- params_Lo
-low_params_for_model_cross <- params_Lo
-
-high_params_for_model_cross[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="high", res=="all") %>% select(T_A, T_H, T_AH)
-med_params_for_model_cross[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="med", res=="all") %>% select(T_A, T_H, T_AH)
-low_params_for_model_cross[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="low", res=="all") %>% select(T_A, T_H, T_AH)
-
-# Replicates
-high_params_for_model_rep <- params_Lo
-med_params_for_model_rep <- params_Lo
-low_params_for_model_rep <- params_Lo
-
-high_params_for_model_rep[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="high", res=="all") %>% select(T_A, T_H, T_AH)
-med_params_for_model_rep[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="med", res=="all") %>% select(T_A, T_H, T_AH)
-low_params_for_model_rep[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="low", res=="all") %>% select(T_A, T_H, T_AH)
-
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ####### Initial conditions ############
@@ -143,8 +112,8 @@ low_params_for_model_rep[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl
 
 growth_data %>% filter(date==as_date("2023-06-23")) %>% ggplot()+geom_histogram(aes(x=blade_len))+geom_vline(aes(xintercept=mean(blade_len)), color="red")+geom_vline(aes(xintercept=median(blade_len)), color="blue")
 
-growth_data %>% filter(date==as_date("2023-06-23")) %>% summarise(median_len = median(blade_len))
-growth_data %>% filter(date==as_date("2023-07-13")) %>% summarise(median_len = median(blade_len))
+growth_data %>% filter(date==as_date("2023-06-23"))  %>% group_by(trt) %>% summarise(mean_len = mean(blade_len))
+growth_data %>% filter(date==as_date("2023-07-13")) %>% group_by(trt) %>% summarise(mean_len = mean(blade_len))
 
 PJN2_meandat %>% filter(Date==as_date("2018-02-14")) %>% pull(mean_length)
 sol_all %>% filter(source=="Point Judith Pond N 1", Date == as_datetime("2018-02-14 24:00:00"), params=="orig")  %>% select(L_allometric, M_V, m_EC, m_EN, W)
@@ -159,46 +128,66 @@ state_Lo_UNH <- c(m_EC = 0.01, m_EN = 0.001, M_V = 2/(w_V+0.001*w_EN+0.01*w_EC))
 times_Lo_UNH <- seq(0, 526, 1)
 
 # Irradiance forcing
-I_field <- approxfun(x = c(0:526), y = Z$PAR*0.5, method = "linear", rule = 2)
+I_field <- approxfun(x = c(0:526), y = Z$PAR, method = "linear", rule = 2)
 # Nitrate forcing
 N_field <- approxfun(x = c(0:526), y = Z$nitrate, method = "linear", rule = 2)
 # Temperature forcing - control tank
-T_field <- approxfun(x = c(0:526), y = Z$control_temp+273.15, method = "linear", rule = 2)
+T_field <- approxfun(x = c(0:526), y = Z$highN_temp+273.15, method = "linear", rule = 2) ## HIGH TEMP
 
-W <- 0.05
-sol_control_tank <- ode(y = state_Lo_UNH, t = times_Lo_UNH, func = rates_Lo, parms = low_params_for_model_cross)
-sol_control_tank <- ode(y = state_Lo_UNH, t = times_Lo_UNH, func = rates_Lo, parms = low_params_for_model_cross)
-sol_control_tank <- ode(y = state_Lo_UNH, t = times_Lo_UNH, func = rates_Lo, parms = low_params_for_model_cross)
-sol_control_tank <- ode(y = state_Lo_UNH, t = times_Lo_UNH, func = rates_Lo, parms = low_params_for_model_cross)
+W <- 2
+#sol_control_tank <- ode(y = state_Lo_UNH, t = times_Lo_UNH, func = rates_Lo, parms = low_params_for_model_cross)
+#sol_control_tank <- clean_ode_sol(sol_control_tank, Z$date, times_Lo_UNH, source="tank") %>% mutate(L_allometric)
+# 
+# ggplot()+
+#   geom_smooth(data=sol_control_tank, aes(x=Date, y=L_allometric))
 
-sol_control_tank <- clean_ode_sol(sol_control_tank, Z$date, times_Lo_UNH, source="tank") %>% mutate(L_allometric)
 
-ggplot()+
-  geom_smooth(data=sol_control_tank, aes(x=Date, y=L_allometric))
-
-#params_list <- map(params, as_vector)
-
-run_model_fun <- function() {
-  params_temp <- params_Lo
-  params_temp[c("T_A", "T_H", "T_AH")] <- params %>% filter(type==type, level==level, res==res) %>% select(T_A, T_H, T_AH)
-  output_df <- tibble(params_temp)
+run_model_fun_small <- function(p) {
+  ode_out = ode(y = state_Lo_UNH, t = times_Lo_UNH, func = rates_Lo, parms = p)
+  ode_out = as.data.frame(ode_out) %>% select(time, W, L_allometric)
+  ode_out
 }
 
 update_params <- function(T_A, T_H, T_AH) {
-  params_temp <- params_Lo
+  params_temp <- params_Lo_unh
   params_temp[c("T_A", "T_H", "T_AH")] <- c(T_A, T_H, T_AH)
   params_temp
 }
  
-params %>% rowwise() %>%  mutate(
-                  params_list = list(update_params(T_A, T_H, T_AH)))
+params_list<- params %>% rowwise() %>%  mutate(
+  params_list = list(update_params(T_A, T_H, T_AH)),
+  )
+  
+sols_list<- lapply(params_list$params_list, run_model_fun_small)
 
-split(params)
+params_list_hot <- params_list %>% ungroup() %>% mutate(name=c(1:20)) %>% left_join(enframe(sols_list)) %>% 
+  select(-c(name, params_list)) %>% unnest_longer(value) %>% mutate(
+    len = value$L_allometric,
+    W=value$W,
+    date = rep(Z$date, 20),.keep="unused"
+  )
+
+final_lens <- params_list_hot %>% group_by(type, level, res) %>% summarise(final_len = max(len))
 
 ggplot()+
-  geom_line(data=Z, aes(x=date, y=PAR*0.5))
- # geom_line(data=Z, aes(x=date, y=control_temp))+
-  #geom_line(data=Z, aes(x=date, y=nitrate))
+  geom_smooth(data=params_list_hot %>% filter(level!="lit", level!="orig", res!="means"), aes(x=date, y=len, color=level))+facet_grid(res~type)+geom_hline(yintercept = 45)
 
 
 
+T_field <- approxfun(x = c(0:526), y = Z$control_temp+273.15, method = "linear", rule = 2)
+sols_list_cold<- lapply(params_list$params_list, run_model_fun_small)
+
+params_list_cold <- params_list %>% ungroup() %>% mutate(name=c(1:20)) %>% left_join(enframe(sols_list_cold)) %>% 
+  select(-c(name, params_list)) %>% unnest_longer(value) %>% mutate(
+    len = value$L_allometric,
+    W=value$W,
+    date = rep(Z$date, 20),.keep="unused"
+  )
+
+hot_plot<-ggplot()+
+  geom_smooth(data=params_list_hot %>% filter(level!="lit", level!="orig", res=="cross"), aes(x=date, y=len, color=level))+facet_wrap(~type)+labs(x=NULL, y="calibrated under heat")
+
+cold_plot<-ggplot()+
+  geom_smooth(data=params_list_cold %>% filter(level!="lit", level!="orig", res=="cross"), aes(x=date, y=len, color=level))+facet_wrap(~type)+labs(x=NULL, y="calibrated under normal")
+
+hot_plot/cold_plot
