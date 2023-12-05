@@ -132,9 +132,9 @@ high_params_for_model_cross <- params_Lo
 med_params_for_model_cross <- params_Lo
 low_params_for_model_cross <- params_Lo
 
-high_params_for_model_cross[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="high", res=="all") %>% select(T_A, T_H, T_AH)
-med_params_for_model_cross[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="med", res=="all") %>% select(T_A, T_H, T_AH)
-low_params_for_model_cross[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="low", res=="all") %>% select(T_A, T_H, T_AH)
+high_params_for_model_cross[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="high", res=="cross") %>% select(T_A, T_H, T_AH)
+med_params_for_model_cross[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="med", res=="cross") %>% select(T_A, T_H, T_AH)
+low_params_for_model_cross[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="low", res=="cross") %>% select(T_A, T_H, T_AH)
 
 # Replicates
 high_params_for_model_rep <- params_Lo
@@ -239,24 +239,6 @@ T_Sled1_Y1 <- T_field(0:4008) #saving the forcing this way for ease of later vis
 
 ###### Model runs standard ######
 # (the differential equation solver)
-#T_field <- approxfun(x = c(0:4008), y = c(AvgTempKbyhr_part1+2, fd, AvgTempKbyhr_part2+2), method = "linear", rule = 2)
-
-params_allometric <- bind_rows(list("rates_Lo"=params, "rates_L_new"=params), .id="scaling")
-params_nested <- params_allometric %>% nest(data = c(T_A, T_H, T_AH))
-
-plan(multisession, workers=availableCores())
-
-output_sled1_yr1 <- params_nested %>% mutate(std_L = future_map(data, function(df) {
-  temp_params <- params_Lo
-  temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
-  ode_output<- as.data.frame(ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = temp_params)) %>% select(time, W, L_allometric)
-  ode_output
-})) %>% mutate(new_L = future_map(data, function(df) {
-  temp_params <- params_Lo
-  temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
-  ode_output<- as.data.frame(ode(y = state_Lo, t = times_Lo_Sled1, func = rates_L_new, parms = temp_params)) %>% select(time, W, L_allometric)
-  ode_output
-})) %>% select(-data)
 
 sol_Sled1 <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = params_Lo)
 
@@ -680,6 +662,14 @@ rmse_dat <- field_data %>% group_by(source) %>% left_join((sol_all %>% group_by(
 rmse_dat %>% filter(params=="orig")
 
 library(tidytext)
-ggplot(data=rmse_dat %>% ungroup()) + geom_col(aes(x=reorder_within(params, rmse, source), y=rmse, fill=params))+
+
+ggplot(data=rmse_dat %>% ungroup(), aes(x=reorder_within(params, rmse, source), y=rmse, fill=params)) + 
+  geom_col()+
+  geom_text(aes(label = round(rmse,1), vjust = -0.2))+
   scale_x_reordered()+
   facet_wrap(~source, scales = "free_x")
+
+ggplot(data=rmse_dat %>% ungroup() %>% filter(str_detect(params, "rep", TRUE))) + geom_col(aes(x=reorder_within(params, rmse, source), y=rmse, fill=params))+
+  scale_x_reordered()+
+  facet_wrap(~source, scales = "free_x")
+
