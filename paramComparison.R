@@ -78,38 +78,9 @@ AvgTempKbyhr_part2 <- AvgTempKbyhr$x[860:4009] #later part of original temp file
 T_field <- approxfun(x = c(0:4008), y = c(AvgTempKbyhr_part1, fd, AvgTempKbyhr_part2), method = "linear", rule = 2) #the temp forcing function
 T_Sled1_Y1 <- T_field(0:4008) #saving the forcing this way for ease of later visualization
 
-params_allometric <- bind_rows(list("rates_Lo"=params, "rates_L_new"=params), .id="scaling")
-params_nested <- params_allometric %>% nest(data = c(T_A, T_H, T_AH))
 
-plan(multisession, workers=availableCores())
 
-output_sled1_yr1 <- params_nested %>% mutate(std_L = future_map(data, function(df) {
-  temp_params <- params_Lo
-  temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
-  ode_output<- as.data.frame(ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = temp_params)) %>% select(time, W, L_allometric)
-  ode_output
-})) %>% mutate(new_L = future_map(data, function(df) {
-  temp_params <- params_Lo
-  temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
-  ode_output<- as.data.frame(ode(y = state_Lo, t = times_Lo_Sled1, func = rates_L_new, parms = temp_params)) %>% select(time, L_allometric) %>% mutate(L_allometric_new = L_allometric,.keep="unused")
-  ode_output
-})) %>% select(-data)
 
-output_sled1_yr1 <- output_sled1_yr1 %>%
-  mutate(data = future_map2(std_L, new_L, ~ cbind(.x,.y))) %>%
-  select(-c(std_L, new_L))
-
-output_sled1_yr1 <- output_sled1_yr1 %>% unnest(cols=data, names_repair = "unique") %>%
-  select(-time...8) %>%
-  rename(time=time...5, L_allometric_old = L_allometric) %>%
-  pivot_longer(cols=c(L_allometric_old, L_allometric_new), names_to="L_formula", values_to = "L_allometric", names_prefix = "L_allometric_")
-
-output_sled1_yr1_clean <- output_sled1_yr1 %>%
-  ungroup() %>% select(-scaling) %>%
-  group_by(type, level, res, L_formula) %>% distinct() %>%
-  mutate(Temp_C = T_Sled1_Y1-273.15, #conversion back to Celsius from Kelvin
-             Date=sled1_date_seq,
-             source="Point Judith Pond N 1")
 
 for_comp <- output_sled1_yr1_clean %>% filter(type!="ctrl") %>% ungroup() %>% mutate(
   params = case_when(
