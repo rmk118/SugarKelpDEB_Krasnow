@@ -17,6 +17,7 @@ library(lubridate)
 library(gridExtra)
 library(Metrics)
 library(patchwork)
+library(furrr) #parallel processing version of purrr, to speed up model runs
 
 #Required for model runs
 source("SolveR_R.R")
@@ -144,6 +145,8 @@ high_params_for_model_rep[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctr
 med_params_for_model_rep[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="med", res=="all") %>% select(T_A, T_H, T_AH)
 low_params_for_model_rep[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="low", res=="all") %>% select(T_A, T_H, T_AH)
 
+
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ####### Initial conditions year 1 ############
 #Initial conditions of state variables
@@ -210,8 +213,8 @@ Dredge_Y1_hobo_orig$Temp_K <- Dredge_Y1_hobo_orig$Temp_C+273.15 #create column w
 ### FIELD DATA MODEL RUNS YR 1 ####
 
 ### Judith N (sled) line 1 ####
-W <- 0.05 #inital biomass for conversions (cannot put in initial conditions)
-
+ #initial biomass for conversions (cannot put in initial conditions)
+W=0.05
 #Converted to hourly by multiply by 24
 N_field <- approxfun(x = c(161*24, 139*24, 105*24, 0, 28*24, 84*24, 172*24), y = N_sled$NitrateNitrite_uM, method = "linear", rule = 2) #N forcing function
 
@@ -238,29 +241,39 @@ T_Sled1_Y1 <- T_field(0:4008) #saving the forcing this way for ease of later vis
 # (the differential equation solver)
 #T_field <- approxfun(x = c(0:4008), y = c(AvgTempKbyhr_part1+2, fd, AvgTempKbyhr_part2+2), method = "linear", rule = 2)
 
+params_allometric <- bind_rows(list("rates_Lo"=params, "rates_L_new"=params), .id="scaling")
+params_nested <- params_allometric %>% nest(data = c(T_A, T_H, T_AH))
+
+plan(multisession, workers=availableCores())
+
+output_sled1_yr1 <- params_nested %>% mutate(std_L = future_map(data, function(df) {
+  temp_params <- params_Lo
+  temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
+  ode_output<- as.data.frame(ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = temp_params)) %>% select(time, W, L_allometric)
+  ode_output
+})) %>% mutate(new_L = future_map(data, function(df) {
+  temp_params <- params_Lo
+  temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
+  ode_output<- as.data.frame(ode(y = state_Lo, t = times_Lo_Sled1, func = rates_L_new, parms = temp_params)) %>% select(time, W, L_allometric)
+  ode_output
+})) %>% select(-data)
+
 sol_Sled1 <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = params_Lo)
 
-W <- 0.05
+
 sol_new_Sled1 <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = new_params_for_model)
-W <- 0.05
 sol_high_Sled1 <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = high_params_for_model)
-W <- 0.05
 sol_med_Sled1 <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = med_params_for_model)
-W <- 0.05
 sol_low_Sled1 <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = low_params_for_model)
 
-W <- 0.05
+
 sol_high_Sled1_cross <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = high_params_for_model_cross)
-W <- 0.05
 sol_med_Sled1_cross <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = med_params_for_model_cross)
-W <- 0.05
 sol_low_Sled1_cross <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = low_params_for_model_cross)
 
-W <- 0.05
+
 sol_high_Sled1_rep <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = high_params_for_model_rep)
-W <- 0.05
 sol_med_Sled1_rep <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = med_params_for_model_rep)
-W <- 0.05
 sol_low_Sled1_rep <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = low_params_for_model_rep)
 
 
@@ -268,35 +281,25 @@ sol_low_Sled1_rep <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parm
 T_field <- approxfun(x = c(0:4008), y = c(AvgTempKbyhr_part1+2, fd+2, AvgTempKbyhr_part2+2), method = "linear", rule = 2)
 T_Sled1_plus2 <- T_field(0:4008) #saving the forcing this way for ease of later visualization
 
-W <- 0.05
 sol_Sled1_plus2 <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = params_Lo)
-W <- 0.05
 sol_new_Sled1_plus2 <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = new_params_for_model)
-W <- 0.05
+
 sol_high_Sled1_plus2 <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = high_params_for_model)
-W <- 0.05
 sol_med_Sled1_plus2 <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = med_params_for_model)
-W <- 0.05
 sol_low_Sled1_plus2 <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = low_params_for_model)
 
-W <- 0.05
 sol_high_Sled1_plus2_cross <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = high_params_for_model_cross)
-W <- 0.05
 sol_med_Sled1_plus2_cross <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = med_params_for_model_cross)
-W <- 0.05
 sol_low_Sled1_plus2_cross <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = low_params_for_model_cross)
 
-W <- 0.05
 sol_high_Sled1_plus2_rep <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = high_params_for_model_rep)
-W <- 0.05
 sol_med_Sled1_plus2_rep <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = med_params_for_model_rep)
-W <- 0.05
 sol_low_Sled1_plus2_rep <- ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = low_params_for_model_rep)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Setting up the forcing functions with field data for
 ### Judith N (sled) line 2 ####
-W <- 0.05 #inital biomass for conversions (cannot put in initial conditions)
+ #inital biomass for conversions (cannot put in initial conditions)
 
 # N forcing set-up Judith N 2 #
 N_field <- approxfun(x = c(133*24, 111*24, 77*24, -28*24, 0, 56*24, 144*24), y = N_sled$NitrateNitrite_uM, method = "linear", rule = 2) #N forcing function
@@ -321,27 +324,19 @@ T_Sled2_Y1 <- T_field(0:3336) #for later ease in plotting the forcing
 
 ##### Model runs ####
 sol_Sled2 <- ode(y = state_Lo, t = times_Lo_Sled2, func = rates_Lo, parms = params_Lo)
-W <- 0.05
 sol_new_Sled2 <- ode(y = state_Lo, t = times_Lo_Sled2, func = rates_Lo, parms = new_params_for_model)
-W <- 0.05
+
 sol_high_Sled2 <- ode(y = state_Lo, t = times_Lo_Sled2, func = rates_Lo, parms = high_params_for_model)
-W <- 0.05
 sol_med_Sled2 <- ode(y = state_Lo, t = times_Lo_Sled2, func = rates_Lo, parms = med_params_for_model)
-W <- 0.05
 sol_low_Sled2 <- ode(y = state_Lo, t = times_Lo_Sled2, func = rates_Lo, parms = low_params_for_model)
 
-W <- 0.05
+
 sol_high_Sled2_cross <- ode(y = state_Lo, t = times_Lo_Sled2, func = rates_Lo, parms = high_params_for_model_cross)
-W <- 0.05
 sol_med_Sled2_cross <- ode(y = state_Lo, t = times_Lo_Sled2, func = rates_Lo, parms = med_params_for_model_cross)
-W <- 0.05
 sol_low_Sled2_cross <- ode(y = state_Lo, t = times_Lo_Sled2, func = rates_Lo, parms = low_params_for_model_cross)
 
-W <- 0.05
 sol_high_Sled2_rep <- ode(y = state_Lo, t = times_Lo_Sled2, func = rates_Lo, parms = high_params_for_model_rep)
-W <- 0.05
 sol_med_Sled2_rep <- ode(y = state_Lo, t = times_Lo_Sled2, func = rates_Lo, parms = med_params_for_model_rep)
-W <- 0.05
 sol_low_Sled2_rep <- ode(y = state_Lo, t = times_Lo_Sled2, func = rates_Lo, parms = low_params_for_model_rep)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Setting up the forcing functions with field data for
@@ -364,29 +359,23 @@ T_Dredge1_Y1 <- T_field(0:4128) #for ease in later plotting of the forcing
 
 #### Model runs ####
 
-W <- 0.05 #initial biomass for conversions (cannot put in initial conditions)
+ #initial biomass for conversions (cannot put in initial conditions)
 sol_Dredge1 <- ode(y = state_Lo, t = times_Lo_Dredge1, func = rates_Lo, parms = params_Lo)
-W <- 0.05
+
 sol_new_Dredge1 <- ode(y = state_Lo, t = times_Lo_Dredge1, func = rates_Lo, parms = new_params_for_model)
-W <- 0.05
+
 sol_high_Dredge1 <- ode(y = state_Lo, t = times_Lo_Dredge1, func = rates_Lo, parms = high_params_for_model)
-W <- 0.05
 sol_med_Dredge1 <- ode(y = state_Lo, t = times_Lo_Dredge1, func = rates_Lo, parms = med_params_for_model)
-W <- 0.05
 sol_low_Dredge1 <- ode(y = state_Lo, t = times_Lo_Dredge1, func = rates_Lo, parms = low_params_for_model)
 
-W <- 0.05
+
 sol_high_Dredge1_cross <- ode(y = state_Lo, t = times_Lo_Dredge1, func = rates_Lo, parms = high_params_for_model_cross)
-W <- 0.05
 sol_med_Dredge1_cross <- ode(y = state_Lo, t = times_Lo_Dredge1, func = rates_Lo, parms = med_params_for_model_cross)
-W <- 0.05
 sol_low_Dredge1_cross <- ode(y = state_Lo, t = times_Lo_Dredge1, func = rates_Lo, parms = low_params_for_model_cross)
 
-W <- 0.05
+
 sol_high_Dredge1_rep <- ode(y = state_Lo, t = times_Lo_Dredge1, func = rates_Lo, parms = high_params_for_model_rep)
-W <- 0.05
 sol_med_Dredge1_rep <- ode(y = state_Lo, t = times_Lo_Dredge1, func = rates_Lo, parms = med_params_for_model_rep)
-W <- 0.05
 sol_low_Dredge1_rep <- ode(y = state_Lo, t = times_Lo_Dredge1, func = rates_Lo, parms = low_params_for_model_rep)
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Setting up the forcing functions with field data for
@@ -409,29 +398,23 @@ T_Dredge2_Y1 <- T_field(0:3456) #for ease of later plotting the temperature forc
 
 #### Model runs ####
 
-W <- 0.05 #initial biomass for conversions (cannot put in initial conditions)
+ #initial biomass for conversions (cannot put in initial conditions)
 sol_Dredge2 <- ode(y = state_Lo, t = times_Lo_Dredge2, func = rates_Lo, parms = params_Lo)
-W <- 0.05
+
 sol_new_Dredge2 <- ode(y = state_Lo, t = times_Lo_Dredge2, func = rates_Lo, parms = new_params_for_model)
-W <- 0.05
+
 sol_high_Dredge2 <- ode(y = state_Lo, t = times_Lo_Dredge2, func = rates_Lo, parms = high_params_for_model)
-W <- 0.05
 sol_med_Dredge2 <- ode(y = state_Lo, t = times_Lo_Dredge2, func = rates_Lo, parms = med_params_for_model)
-W <- 0.05
 sol_low_Dredge2 <- ode(y = state_Lo, t = times_Lo_Dredge2, func = rates_Lo, parms = low_params_for_model)
 
-W <- 0.05
+
 sol_high_Dredge2_cross <- ode(y = state_Lo, t = times_Lo_Dredge2, func = rates_Lo, parms = high_params_for_model_cross)
-W <- 0.05
 sol_med_Dredge2_cross <- ode(y = state_Lo, t = times_Lo_Dredge2, func = rates_Lo, parms = med_params_for_model_cross)
-W <- 0.05
 sol_low_Dredge2_cross <- ode(y = state_Lo, t = times_Lo_Dredge2, func = rates_Lo, parms = low_params_for_model_cross)
 
-W <- 0.05
+
 sol_high_Dredge2_rep <- ode(y = state_Lo, t = times_Lo_Dredge2, func = rates_Lo, parms = high_params_for_model_rep)
-W <- 0.05
 sol_med_Dredge2_rep <- ode(y = state_Lo, t = times_Lo_Dredge2, func = rates_Lo, parms = med_params_for_model_rep)
-W <- 0.05
 sol_low_Dredge2_rep <- ode(y = state_Lo, t = times_Lo_Dredge2, func = rates_Lo, parms = low_params_for_model_rep)
 
 
@@ -570,39 +553,42 @@ KelpY1 <- filter(KelpY1, SiteLine != "Narragansett Bay N 2")
 #Point Judith Point N (sled) Line 1
 PJN1_meandat <- KelpY1[KelpY1$SiteLine == "Point Judith Pond N 1",] %>%
   group_by(Date) %>%
-  summarize(mean_length = mean(Length, na.rm = TRUE), sd_length = sd(Length, na.rm = TRUE))
-PJN1_meandat$Date <- as.POSIXct(PJN1_meandat$Date)
-PJN1_meandat_sub <- PJN1_meandat[2:6,]
-erPJN1 <- merge(PJN1_meandat_sub, sol_all_orig[sol_all_orig$source == "Point Judith Pond N 1",], all.x = TRUE)
+  summarize(mean_length = mean(Length, na.rm = TRUE), sd_length = sd(Length, na.rm = TRUE)) %>% 
+  mutate(Date= as.POSIXct(Date)) %>% 
+  na.omit()
+
+erPJN1 <- merge(PJN1_meandat, sol_all_orig[sol_all_orig$source == "Point Judith Pond N 1",], all.x = TRUE)
 PJN1_rmse <- rmse(erPJN1$mean_length, erPJN1$L_allometric)
 
 #Point Judith Point N (sled) Line 2
 PJN2_meandat <- KelpY1[KelpY1$SiteLine == "Point Judith Pond N 2",] %>%
   group_by(Date) %>%
-  summarize(mean_length = mean(Length, na.rm = TRUE), sd_length = sd(Length, na.rm = TRUE))
-PJN2_meandat$Date <- as.POSIXct(PJN2_meandat$Date)
-PJN2_meandat_sub <- PJN2_meandat[2:6,]
-erPJN2 <- merge(PJN2_meandat_sub, sol_all_orig[sol_all_orig$source == "Point Judith Pond N 2",], all.x = TRUE)
+  summarize(mean_length = mean(Length, na.rm = TRUE), sd_length = sd(Length, na.rm = TRUE))  %>% 
+  mutate(Date= as.POSIXct(Date)) %>% 
+  na.omit()
+
+erPJN2 <- merge(PJN2_meandat, sol_all_orig[sol_all_orig$source == "Point Judith Pond N 2",], all.x = TRUE)
 PJN2_rmse <- rmse(erPJN2$mean_length, erPJN2$L_allometric)
 
 #Point Judith Point S (dredge) Line 1
 PJS1_meandat <- KelpY1[KelpY1$SiteLine == "Point Judith Pond S 1",] %>%
   group_by(Date) %>%
-  summarize(mean_length = mean(Length, na.rm = TRUE), sd_length = sd(Length, na.rm = TRUE))
-PJS1_meandat$Date <- as.POSIXct(PJS1_meandat$Date)
-PJS1_meandat_sub <- PJS1_meandat[2:6,]
-erPJS1 <- merge(PJS1_meandat_sub, sol_all_orig[sol_all_orig$source == "Point Judith Pond S 1",], all.x = TRUE)
-# erPJS1 <- merge(PJS1_meandat_sub, dredge1_sols %>% filter(source=="Point Judith Pond S 1", params=="low"), all.x = TRUE)
+  summarize(mean_length = mean(Length, na.rm = TRUE), sd_length = sd(Length, na.rm = TRUE))  %>% 
+  mutate(Date= as.POSIXct(Date)) %>% 
+  na.omit()
+
+erPJS1 <- merge(PJS1_meandat, sol_all_orig[sol_all_orig$source == "Point Judith Pond S 1",], all.x = TRUE)
+
 PJS1_rmse <- rmse(erPJS1$mean_length, erPJS1$L_allometric)
 
 #Point Judith Point S (dredge) Line 2
 PJS2_meandat <- KelpY1[KelpY1$SiteLine == "Point Judith Pond S 2",] %>%
   group_by(Date) %>%
-  summarize(mean_length = mean(Length, na.rm = TRUE), sd_length = sd(Length, na.rm = TRUE))
-PJS2_meandat$Date <- as.POSIXct(PJS2_meandat$Date)
-PJS2_meandat_sub <- PJS2_meandat[2:6,]
-erPJS2 <- merge(PJS2_meandat_sub, sol_all_orig[sol_all_orig$source == "Point Judith Pond S 2",], all.x = TRUE)
-erPJS2 <- merge(PJS2_meandat_sub, dredge2_sols %>% filter(source=="Point Judith Pond S 2", params=="low"), all.x = TRUE)
+  summarize(mean_length = mean(Length, na.rm = TRUE), sd_length = sd(Length, na.rm = TRUE))  %>% 
+  mutate(Date= as.POSIXct(Date)) %>% 
+  na.omit()
+
+erPJS2 <- merge(PJS2_meandat, sol_all_orig[sol_all_orig$source == "Point Judith Pond S 2",], all.x = TRUE)
 PJS2_rmse <- rmse(erPJS2$mean_length, erPJS2$L_allometric)
 
 ###### Plots #####
@@ -650,7 +636,7 @@ PJS_yr1+PJN_yr1
 sol_all <- rbind(dredge1_sols,dredge2_sols,sled1_sols, sled2_sols)
 
 ggplot() +
-  geom_smooth(data = sol_all, aes(Date, L_allometric, color = params), se=FALSE)+
+  geom_smooth(data = sol_all %>% filter(params %in% c("high_cross", "med_cross", "low_cross", "orig")), aes(Date, L_allometric, color = params), se=FALSE)+
   labs(x= "Date", y = "Blade length (cm)")+
   facet_wrap(~source)
 
@@ -684,3 +670,16 @@ ggplot() +
   geom_errorbar(PJS2_meandat, mapping = aes(x = Date, ymin = mean_length-sd_length, ymax = mean_length+sd_length), width = 1) +
   geom_smooth(data = dredge2_sols, aes(Date, L_allometric, color = params), se=FALSE)+
   labs(x= "Date", y = "Blade length (cm)")
+
+field_data <- bind_rows(list("Point Judith Pond N 1" = PJN1_meandat, "Point Judith Pond N 2" = PJN2_meandat, "Point Judith Pond S 1" = PJS1_meandat, "Point Judith Pond S 2" =PJS2_meandat), .id="source")
+
+
+rmse_dat <- field_data %>% group_by(source) %>% left_join((sol_all %>% group_by(source))) %>% group_by(source, params) %>% summarise(rmse = rmse(mean_length, L_allometric))
+
+
+rmse_dat %>% filter(params=="orig")
+
+library(tidytext)
+ggplot(data=rmse_dat %>% ungroup()) + geom_col(aes(x=reorder_within(params, rmse, source), y=rmse, fill=params))+
+  scale_x_reordered()+
+  facet_wrap(~source, scales = "free_x")
