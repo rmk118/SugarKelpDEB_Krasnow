@@ -232,19 +232,17 @@ output_sled1_yr1 <- params_nested %>% mutate(std_L = future_map(data, function(d
 
 output_sled1_yr1 <- output_sled1_yr1 %>%
   mutate(data = future_map2(std_L, new_L, ~ cbind(.x,.y))) %>%
-  select(-c(std_L, new_L))
-
-output_sled1_yr1 <- output_sled1_yr1 %>% 
-  unnest(cols=data, names_repair = "unique") %>%
-  select(-time...8) %>%
-  rename(time=time...5, L_allometric_old = L_allometric) %>%
+  select(-c(std_L, new_L, scaling)) %>% 
+  distinct() %>% 
+  rowwise() %>% 
+  mutate(data = list(data[,c(1,2,3,5)])) %>% 
+  unnest(cols=data) %>%
+  rename(L_allometric_old = L_allometric) %>%
   pivot_longer(cols=c(L_allometric_old, L_allometric_new), names_to="L_formula", values_to = "L_allometric", names_prefix = "L_allometric_")
 
 output_sled1_yr1_clean <- output_sled1_yr1 %>%
   ungroup() %>% 
-  select(-scaling) %>%
   group_by(type, level, res, L_formula) %>% 
-  distinct() %>%
   mutate(Temp_C = T_Sled1_Y1-273.15, #conversion back to Celsius from Kelvin
          Date=sled1_date_seq,
          source="Point Judith Pond N 1")
@@ -292,17 +290,17 @@ output_sled2_yr1 <- params_nested %>% mutate(std_L = future_map(data, function(d
 
 output_sled2_yr1 <- output_sled2_yr1 %>%
   mutate(data = future_map2(std_L, new_L, ~ cbind(.x,.y))) %>%
-  select(-c(std_L, new_L)) %>% 
-  unnest(cols=data, names_repair = "unique") %>%
-  select(-time...8) %>%
-  rename(time=time...5, L_allometric_old = L_allometric) %>%
+  select(-c(std_L, new_L, scaling)) %>% 
+  distinct() %>% 
+  rowwise() %>% 
+  mutate(data = list(data[,c(1,2,3,5)])) %>% 
+  unnest(cols=data) %>%
+  rename(L_allometric_old = L_allometric) %>%
   pivot_longer(cols=c(L_allometric_old, L_allometric_new), names_to="L_formula", values_to = "L_allometric", names_prefix = "L_allometric_")
 
 output_sled2_yr1_clean <- output_sled2_yr1 %>%
   ungroup() %>% 
-  select(-scaling) %>%
-  group_by(type, level, res, L_formula) %>% 
-  distinct() %>%
+  group_by(type, level, res, L_formula) %>%
   mutate(Temp_C = T_Sled2_Y1-273.15, #conversion back to Celsius from Kelvin
          Date=sled2_date_seq,
          source="Point Judith Pond N 2")
@@ -342,17 +340,17 @@ output_dredge1_yr1 <- params_nested %>% mutate(std_L = future_map(data, function
 
 output_dredge1_yr1 <- output_dredge1_yr1 %>%
   mutate(data = future_map2(std_L, new_L, ~ cbind(.x,.y))) %>%
-  select(-c(std_L, new_L)) %>% 
-  unnest(cols=data, names_repair = "unique") %>%
-  select(-time...8) %>%
-  rename(time=time...5, L_allometric_old = L_allometric) %>%
+  select(-c(std_L, new_L, scaling)) %>% 
+  distinct() %>% 
+  rowwise() %>% 
+  mutate(data = list(data[,c(1,2,3,5)])) %>% 
+  unnest(cols=data) %>%
+  rename(L_allometric_old = L_allometric) %>%
   pivot_longer(cols=c(L_allometric_old, L_allometric_new), names_to="L_formula", values_to = "L_allometric", names_prefix = "L_allometric_")
 
 output_dredge1_yr1_clean <- output_dredge1_yr1 %>%
   ungroup() %>% 
-  select(-scaling) %>%
-  group_by(type, level, res, L_formula) %>% 
-  distinct() %>%
+  group_by(type, level, res, L_formula) %>%
   mutate(Temp_C = T_Dredge1_Y1-273.15, #conversion back to Celsius from Kelvin
          Date=dredge1_date_seq,
          source="Point Judith Pond S 1")
@@ -392,17 +390,17 @@ output_dredge2_yr1 <- params_nested %>% mutate(std_L = future_map(data, function
 
 output_dredge2_yr1 <- output_dredge2_yr1 %>%
   mutate(data = future_map2(std_L, new_L, ~ cbind(.x,.y))) %>%
-  select(-c(std_L, new_L)) %>% 
-  unnest(cols=data, names_repair = "unique") %>%
-  select(-time...8) %>%
-  rename(time=time...5, L_allometric_old = L_allometric) %>%
+  select(-c(std_L, new_L, scaling)) %>% 
+  distinct() %>% 
+  rowwise() %>% 
+  mutate(data = list(data[,c(1,2,3,5)])) %>% 
+  unnest(cols=data) %>%
+  rename(L_allometric_old = L_allometric) %>%
   pivot_longer(cols=c(L_allometric_old, L_allometric_new), names_to="L_formula", values_to = "L_allometric", names_prefix = "L_allometric_")
 
 output_dredge2_yr1_clean <- output_dredge2_yr1 %>%
   ungroup() %>% 
-  select(-scaling) %>%
-  group_by(type, level, res, L_formula) %>% 
-  distinct() %>%
+  group_by(type, level, res, L_formula) %>%
   mutate(Temp_C = T_Dredge2_Y1-273.15, #conversion back to Celsius from Kelvin
          Date=dredge2_date_seq,
          source="Point Judith Pond S 2")
@@ -426,7 +424,7 @@ all_output <- rbind(output_sled1_yr1_clean, output_sled2_yr1_clean, output_dredg
 ) 
 
 
-#import field data
+### Import field data ####
 KelpY1 <- read.csv("Year1kelpdata.csv", header = TRUE, fileEncoding="UTF-8-BOM")
 names(KelpY1)[2] <- "Site"
 KelpY1 <- filter(KelpY1, Site != "Fox Island")
@@ -434,7 +432,7 @@ KelpY1$Date <- mdy(KelpY1$SamplingDate)
 KelpY1$SiteLine <- paste(KelpY1$Site, KelpY1$Line)
 KelpY1 <- filter(KelpY1, SiteLine != "Narragansett Bay N 2")
 
-###### Combine with model data #####
+### Combine with model data #####
 
 #Point Judith Point N (sled) Line 1
 PJN1_meandat <- KelpY1[KelpY1$SiteLine == "Point Judith Pond N 1",] %>%
@@ -466,15 +464,20 @@ PJS2_meandat <- KelpY1[KelpY1$SiteLine == "Point Judith Pond S 2",] %>%
 
 field_data <- bind_rows(list("Point Judith Pond N 1" = PJN1_meandat, "Point Judith Pond N 2" = PJN2_meandat, "Point Judith Pond S 1" = PJS1_meandat, "Point Judith Pond S 2" =PJS2_meandat), .id="source")
 
-rmse_dat_new <- field_data %>% group_by(source) %>% left_join((all_output %>% group_by(source))) %>% group_by(source, params, L_formula) %>% summarise(rmse = rmse(mean_length, L_allometric))
+rmse_dat_new <- field_data %>% group_by(source) %>% left_join((all_output %>% group_by(source))) %>% group_by(source, params, L_formula, type) %>% summarise(rmse = rmse(mean_length, L_allometric))
 
 rmse_dat_new %>% filter(params=="orig", L_formula=="old") #check to make sure it's the same as original paper
 
-ggplot(data=rmse_dat_new %>% ungroup(), aes(x=reorder_within(params, rmse, list(source, L_formula)), y=rmse, fill=params)) +
+ggplot(data=rmse_dat_new %>% ungroup() %>% filter(type!="stress"), aes(x=reorder_within(params, rmse, list(L_formula, source)), y=rmse, fill=params)) +
   geom_col()+
   geom_text(aes(label = round(rmse,1), vjust = -0.2))+
-  scale_x_reordered()+
-  facet_wrap(L_formula~source, scales = "free_x")
+  facet_wrap(L_formula~source, scales = "free_x")+
+  scale_x_reordered()
+
+ggplot(data=rmse_dat_new %>% ungroup() %>% filter(type!="stress"), aes(x=reorder(params, rmse), y=rmse, fill=params)) +
+  geom_col()+
+  geom_text(aes(label = round(rmse,1), vjust = -0.2))+
+  facet_grid(L_formula~source)
 
 ggplot(data=all_output %>% filter(res!="cross"), aes(x=Date, y=L_allometric, color=params, linetype=L_formula)) +
   geom_line()+
