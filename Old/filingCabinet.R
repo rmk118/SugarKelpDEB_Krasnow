@@ -482,3 +482,20 @@ low_params_for_model_rep <- params_Lo
 high_params_for_model_rep[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="high", res=="all") %>% select(T_A, T_H, T_AH)
 med_params_for_model_rep[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="med", res=="all") %>% select(T_A, T_H, T_AH)
 low_params_for_model_rep[c("T_A", "T_H", "T_AH")]<-params %>% filter(type=="ctrl", level=="low", res=="all") %>% select(T_A, T_H, T_AH)
+
+
+library(zoo)
+
+# Create zoo objects
+zT <- zoo(temp_forcing, order.by = temp_forcing$date)[,2:4]
+zPAR <- zoo(PAR_forcing$PAR, PAR_forcing$date) # high freq
+zN <- zoo(nitrate$nitrate, as.POSIXct(nitrate$date))  # low freq
+
+# Merge series into one object
+z <- merge(zT, zPAR,zN)
+# Interpolate calibration data
+z$zN <- na.approx(z$zN, rule=2)
+z$zPAR <- na.approx(z$zPAR, rule=2)
+# Only keep index values from sample data
+z <- z[index(zT),]
+Z <- as_tibble(z) %>% mutate(PAR=as.double(zPAR), nitrate=as.double(zN), .keep="unused", date=temp_forcing$date) %>% mutate(across(where(is.character), ~as.double(.x)))
