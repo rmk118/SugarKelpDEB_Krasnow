@@ -415,33 +415,34 @@ ggplot(data=rmse_dat_new %>% ungroup() %>% filter(type!="stress"), aes(x=reorder
   geom_text(aes(label = round(rmse,1), vjust = -0.2))+
   facet_wrap(~source)
 
-ggplot(data=all_output_yr1 %>% filter(res!="cross"), aes(x=Date, y=L_allometric, color=params)) +
+ggplot(data=all_output_yr1, aes(x=Date, y=L_allometric, color=params)) +
   geom_line()+
   facet_grid(type~source)
 
-ggplot(data=rmse_dat_new %>% ungroup()%>% filter(str_detect(params, "cross", TRUE)), aes(x=reorder_within(params, rmse,list(type,source)), y=rmse, fill=params)) +
+ggplot(data=rmse_dat_new %>% ungroup(), aes(x=reorder_within(params, rmse,list(type,source)), y=rmse, fill=params)) +
   geom_col()+
   geom_text(aes(label = round(rmse,1), vjust = -0.2))+
   scale_x_reordered()+
   facet_wrap(type~source, scales = "free_x")
-
-pjp_plot1 <- ggplot(all_output_yr1 %>% filter(params %in% c("orig", "high", "high_rep"), type!="stress"))+
+# 
+# pjp_plot1 <- ggplot(all_output_yr1 %>% filter(params %in% c("orig", "high", "high_rep", "high_cross"), type!="stress"))+
+  pjp_plot1 <- ggplot(all_output_yr1 %>% filter(params %in% c("orig", "high_cross"), type!="stress"))+
   geom_smooth(aes(x=Date, y=L_allometric, color=params))+
   geom_point(data=field_data, aes(x=Date, y=mean_length))+
   facet_wrap(~source, scales = "free")
 
-pjp_plot2 <-ggplot(all_output_yr2 %>% filter(params %in% c("orig", "high", "high_rep"), type!="stress"))+
+pjp_plot2 <-ggplot(all_output_yr2 %>% filter(params %in% c("orig", "high_cross"), type!="stress"))+
   geom_smooth(aes(x=Date, y=L_allometric, color=params))+
   geom_point(data=field_data_Y2, aes(x=Date, y=mean_length))+
   facet_wrap(~source, scales = "free")
 
 
-nb_plot1 <-ggplot(all_output_NB_yr1 %>% filter(params %in% c("orig", "high", "high_rep"), type!="stress"))+
+nb_plot1 <-ggplot(all_output_NB_yr1 %>% filter(params %in% c("orig", "high_cross"), type!="stress"))+
   geom_smooth(aes(x=Date, y=L_allometric, color=params))+
   geom_point(data=field_data_NB_Y1, aes(x=Date, y=mean_length))+
   facet_wrap(~source, scales = "free_x")
 
-nb_plot2 <- ggplot(all_output_NB_yr2 %>% filter(params %in% c("orig", "high", "high_rep"), type!="stress"))+
+nb_plot2 <- ggplot(all_output_NB_yr2 %>% filter(params %in% c("orig", "high_cross"), type!="stress"))+
   geom_smooth(aes(x=Date, y=L_allometric, color=params))+
   geom_point(data=field_data_NB_Y2, aes(x=Date, y=mean_length))+
   facet_wrap(~source, scales = "free_x")

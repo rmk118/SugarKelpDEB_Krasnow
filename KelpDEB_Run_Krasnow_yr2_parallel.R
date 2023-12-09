@@ -67,7 +67,6 @@ L1_date_seq_Y2 <- seq(as_datetime("2018-12-12 12:00:00"), as_datetime("2019-05-0
 L2_date_seq_Y2 <- seq(as_datetime("2019-02-06 12:00:00"), as_datetime("2019-05-03 12:00:00"), by="hour")
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-### FIELD DATA MODEL RUNS YR 2 ####
 
 ### Sled line 1 ####
 N_field <- approxfun(x = c(1*24, 57*24, 93*24, 124*24, 142*24, 163*24), y = c(Sled_WSA2$NO3NO2_µM), method = "linear", rule = 2) #N forcing function
@@ -265,6 +264,18 @@ rmse_dat_Y2 <- field_data_Y2 %>% group_by(source) %>% left_join((all_output_yr2 
 
 rmse_dat_Y2 %>% filter(params=="orig") #check to make sure it's the same as original paper
 
+### RMSE ####
+
+all_rmse <- bind_rows(rmse_dat_new %>% mutate(year=1), rmse_dat_Y2 %>% mutate(year=2), rmse_NB_Y1 %>% mutate(year=1), rmse_NB_Y2%>% mutate(year=2))
+
+orig_rmse <- all_rmse %>% filter(params =="orig") %>% ungroup()
+
+all_rmse <- all_rmse %>% bind_rows(orig_rmse %>% mutate(type="stress")) %>% bind_rows(orig_rmse %>% mutate(type="ctrl"))
+
+all_rmse <- all_rmse %>% ungroup() %>% left_join(orig_rmse %>% mutate(orig_rmse = rmse) %>% select(source, year, orig_rmse), by=c("source", "year")) %>% mutate(improvement = orig_rmse-rmse)
+
+perc_imp <- all_rmse %>% mutate(imp = if_else(improvement>0, TRUE, FALSE)) %>% group_by(params, type) %>% summarize(num_imp = sum(imp), perc_imp = sum(imp)/14, mean_imp = mean(if_else(improvement>0, improvement, 0)))
+
 ggplot(data=rmse_dat_Y2 %>% ungroup() %>% filter(type!="stress"), aes(x=reorder_within(params, rmse, list(source)), y=rmse, fill=params)) +
   geom_col()+
   geom_text(aes(label = round(rmse,1), vjust = -0.2))+
@@ -281,6 +292,6 @@ ggplot(data=rmse_dat_Y2 %>% ungroup() %>% filter(type!="stress", str_detect(para
   geom_bar(stat="identity", position="dodge")+
 geom_text(aes(label = round(rmse,1), vjust = -0.2))
 
-ggplot(data=all_output_yr2 %>% filter(params=="high"|params=="orig"), aes(x=Date, y=L_allometric, color=params, linetype=type)) +
+ggplot(data=all_output_yr2 %>% filter(str_detect(params, "high")|params=="orig"), aes(x=Date, y=L_allometric, color=params, linetype=type)) +
   geom_smooth()+
-  facet_wrap(~source, scales="free_y")
+  facet_grid(res~source, scales="free_y")

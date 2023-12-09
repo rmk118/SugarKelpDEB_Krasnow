@@ -210,24 +210,20 @@ KelpY1$Date <- mdy(KelpY1$SamplingDate)
 KelpY1$SiteLine <- paste(KelpY1$Site, KelpY1$Line)
 KelpY1 <- filter(KelpY1, SiteLine != "Narragansett Bay N 2")
 
-NBN1_Y1_meandat <- KelpY1[KelpY1$SiteLine == "Narragansett Bay N 1",] %>%
-  group_by(Date) %>%
-  summarize(mean_length = mean(Length, na.rm = TRUE), sd_length = sd(Length, na.rm = TRUE)) %>%
-  mutate(Date= as.POSIXct(Date)) %>%
-  na.omit()
+field_data_fun <- function(df) {
+  df_out <- df %>%
+    group_by(Date) %>%
+    summarize(mean_length = mean(Length, na.rm = TRUE), sd_length = sd(Length, na.rm = TRUE)) %>%
+    mutate(Date= as.POSIXct(Date)) %>%
+    na.omit()
+  df_out
+}
 
-NBS1_Y1_meandat <- KelpY1[KelpY1$SiteLine == "Narragansett Bay S 1",] %>%
-  group_by(Date) %>%
-  summarize(mean_length = mean(Length, na.rm = TRUE), sd_length = sd(Length, na.rm = TRUE)) %>%
-  mutate(Date= as.POSIXct(Date)) %>%
-  na.omit()
+NBN1_Y1_meandat <- KelpY1[KelpY1$SiteLine == "Narragansett Bay N 1",] %>% field_data_fun()
 
-NBS2_Y1_meandat <- KelpY1[KelpY1$SiteLine == "Narragansett Bay S 2",] %>%
-  group_by(Date) %>%
-  summarize(mean_length = mean(Length, na.rm = TRUE), sd_length = sd(Length, na.rm = TRUE)) %>%
-  mutate(Date= as.POSIXct(Date)) %>%
-  na.omit()
+NBS1_Y1_meandat <- KelpY1[KelpY1$SiteLine == "Narragansett Bay S 1",] %>% field_data_fun()
 
+NBS2_Y1_meandat <- KelpY1[KelpY1$SiteLine == "Narragansett Bay S 2",] %>% field_data_fun()
 
 field_data_NB_Y1 <- bind_rows(list("Narragansett Bay N" = NBN1_Y1_meandat, "Narragansett Bay S 1" = NBS1_Y1_meandat, "Narragansett Bay S 2" =NBS2_Y1_meandat), .id="source")
 

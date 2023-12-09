@@ -88,6 +88,7 @@ growth_rates_no_flags <- growth_rates %>% filter(big_loss==FALSE, flag_diff==FAL
 
 # Note: overall, we are using the three treatments as a way to get growth rates under different temperatures. There were no substantial differences between the high N and low N tanks, so we are considering treatment A to be "control" conditions and everything else to be (thermal) "stress" conditions
 
+
 # This summarizes the mean growth of each cross under control temps (~9-12°C)
 mean_growth_by_cross_ctrl <- growth_rates_no_flags %>% 
   filter(trt=="A") %>%
@@ -428,7 +429,20 @@ lit_data_plus_rep_ctrl <- bind_rows(lit_data,
   unh_ctrl_rep %>% mutate(std_rate=std_rgr,.keep="unused")) %>%
   mutate(type="ctrl", res="all")
 
-all_lit_data <- rbind(lit_data_plus, lit_data_plus_rep, lit_data_plus_ctrl, lit_data_plus_rep_ctrl) %>% distinct() %>% # removes duplicate rows (i.e., the original literature data)
+
+lit_data_plus_rep_ctrl <- bind_rows(lit_data,
+                                    unh_ctrl_rep %>% mutate(std_rate=std_rgr,.keep="unused")) %>%
+  mutate(type="ctrl", res="all")
+
+lit_data_plus_ctrl_cross <- bind_rows(lit_data,
+                                      unh_cross_ctrl %>% mutate(stress_group = NA,.keep="unused")) %>%
+  mutate(type="ctrl", res="cross")
+
+lit_data_plus_stress_cross <- bind_rows(lit_data,
+                                      unh_cross_stress %>% mutate(ctrl_group = NA,.keep="unused")) %>%
+  mutate(type="stress", res="cross")
+
+all_lit_data <- rbind(lit_data_plus, lit_data_plus_rep, lit_data_plus_ctrl, lit_data_plus_rep_ctrl, lit_data_plus_ctrl_cross, lit_data_plus_stress_cross) %>% distinct() %>% # removes duplicate rows (i.e., the original literature data)
   mutate(level = case_when(str_ends(paper_full, "high") ~ "high",
                            str_ends(paper_full, "med") ~ "med",
                            str_ends(paper_full, "low") ~ "low",
@@ -473,13 +487,13 @@ stress_means_df <- map(.x=c(high="high", med="med", low="low"), .f=nls_fun, df=l
 stress_all_df <- map(.x=c(high="high", med="med", low="low"), .f=nls_fun, df=lit_data_plus_rep, type="stress") %>% bind_rows(.id="level") %>% mutate(res="all")
 
 #### Stress crosses
-stress_cross_df <- map(.x=c(high="high", med="med", low="low"), .f=nls_fun, df=unh_cross_stress, type="stress") %>% bind_rows(.id="level") %>% mutate(res="cross")
+stress_cross_df <- map(.x=c(high="high", med="med", low="low"), .f=nls_fun, df=lit_data_plus_stress_cross, type="stress") %>% bind_rows(.id="level") %>% mutate(res="cross")
 
 ##### Control means
 ctrl_means_df <- map(.x=c(high="high", med="med", low="low"), .f=nls_fun, df=lit_data_plus_ctrl, type="ctrl") %>% bind_rows(.id="level") %>% mutate(res="means")
 
 #### Control crosses
-ctrl_cross_df <- map(.x=c(high="high", med="med", low="low"), .f=nls_fun, df=unh_cross_ctrl, type="ctrl") %>% bind_rows(.id="level") %>% mutate(res="cross")
+ctrl_cross_df <- map(.x=c(high="high", med="med", low="low"), .f=nls_fun, df=lit_data_plus_ctrl_cross, type="ctrl") %>% bind_rows(.id="level") %>% mutate(res="cross")
 
 ##### Control reps
 ctrl_all_df <- map(.x=c(high="high", med="med", low="low"), .f=nls_fun, df=lit_data_plus_rep_ctrl, type="ctrl") %>% bind_rows(.id="level") %>% mutate(res="all")

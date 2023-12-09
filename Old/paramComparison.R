@@ -80,8 +80,6 @@ T_Sled1_Y1 <- T_field(0:4008) #saving the forcing this way for ease of later vis
 
 
 
-
-
 for_comp <- output_sled1_yr1_clean %>% filter(type!="ctrl") %>% ungroup() %>% mutate(
   params = case_when(
     res=="orig" ~ "orig",
