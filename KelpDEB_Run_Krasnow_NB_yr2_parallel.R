@@ -1,6 +1,4 @@
-### Narragansett Bay Year 2 ################################################################################################################# 
-
-# INCLUDES NEW ALLOMETRIC EQUATION
+### Narragansett Bay Year 2 #################################################################################################################
 
 #Site names here begin with names other than those used in the manuscript
 #Wickford = Narragansett Bay N
@@ -99,26 +97,12 @@ output_W_yr2 <- params_nested %>% mutate(std_L = future_map(data, function(df) {
   temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
   ode_output<- as.data.frame(ode(y = state_LoY2, t = times_Y2_W, func = rates_Lo, parms = temp_params)) %>% select(time, W, L_allometric)
   return(ode_output)
-})) %>% mutate(new_L = future_map(data, function(df) {
-  temp_params <- params_Lo
-  temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
-  ode_output<- as.data.frame(ode(y = state_LoY2, t = times_Y2_W, func = rates_L_new, parms = temp_params)) %>% select(time, L_allometric) %>% mutate(L_allometric_new = L_allometric,.keep="unused")
-  return(ode_output)
 })) %>% select(-data)
 
-output_W_yr2 <- output_W_yr2 %>%
-  mutate(data = future_map2(std_L, new_L, ~ cbind(.x,.y))) %>%
-  select(-c(std_L, new_L, scaling)) %>% 
-  distinct() %>% 
-  rowwise() %>% 
-  mutate(data = list(data[,c(1,2,3,5)])) %>% 
-  unnest(cols=data) %>%
-  rename(L_allometric_old = L_allometric) %>%
-  pivot_longer(cols=c(L_allometric_old, L_allometric_new), names_to="L_formula", values_to = "L_allometric", names_prefix = "L_allometric_")
-
 output_W_yr2_clean <- output_W_yr2 %>%
+  unnest(cols = std_L) %>% 
   ungroup() %>% 
-  group_by(type, level, res, L_formula) %>% 
+  group_by(type, level, res) %>% 
   mutate(Temp_C = T_W_Y2-273.15, #conversion back to Celsius from Kelvin
          Date=W_date_seq_Y2,
          source="Narragansett Bay N")
@@ -155,26 +139,12 @@ output_R1_yr2 <- params_nested %>% mutate(std_L = future_map(data, function(df) 
   temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
   ode_output<- as.data.frame(ode(y = state_LoY2, t = times_Y2_R1, func = rates_Lo, parms = temp_params)) %>% select(time, W, L_allometric)
   ode_output
-})) %>% mutate(new_L = future_map(data, function(df) {
-  temp_params <- params_Lo
-  temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
-  ode_output<- as.data.frame(ode(y = state_LoY2, t = times_Y2_R1, func = rates_L_new, parms = temp_params)) %>% select(time, L_allometric) %>% mutate(L_allometric_new = L_allometric,.keep="unused")
-  ode_output
 })) %>% select(-data)
 
-output_R1_yr2 <- output_R1_yr2 %>%
-  mutate(data = future_map2(std_L, new_L, ~ cbind(.x,.y))) %>%
-  select(-c(std_L, new_L, scaling)) %>% 
-  distinct() %>% 
-  rowwise() %>% 
-  mutate(data = list(data[,c(1,2,3,5)])) %>% 
-  unnest(cols=data) %>%
-  rename(L_allometric_old = L_allometric) %>%
-  pivot_longer(cols=c(L_allometric_old, L_allometric_new), names_to="L_formula", values_to = "L_allometric", names_prefix = "L_allometric_")
-
 output_R1_yr2_clean <- output_R1_yr2 %>%
-  ungroup() %>%
-  group_by(type, level, res, L_formula) %>%
+  unnest(cols = std_L) %>% 
+  ungroup() %>% 
+  group_by(type, level, res) %>% 
   mutate(Temp_C = T_R1_Y2-273.15, #conversion back to Celsius from Kelvin
          Date=R1_date_seq_Y2,
          source="Narragansett Bay S 1")
@@ -205,26 +175,12 @@ output_R2_yr2 <- params_nested %>% mutate(std_L = future_map(data, function(df) 
   temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
   ode_output<- as.data.frame(ode(y = state_LoY2, t = times_Y2_R2, func = rates_Lo, parms = temp_params)) %>% select(time, W, L_allometric)
   ode_output
-})) %>% mutate(new_L = future_map(data, function(df) {
-  temp_params <- params_Lo
-  temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
-  ode_output<- as.data.frame(ode(y = state_LoY2, t = times_Y2_R2, func = rates_L_new, parms = temp_params)) %>% select(time, L_allometric) %>% mutate(L_allometric_new = L_allometric,.keep="unused")
-  ode_output
 })) %>% select(-data)
 
-output_R2_yr2 <- output_R2_yr2 %>%
-  mutate(data = future_map2(std_L, new_L, ~ cbind(.x,.y))) %>%
-  select(-c(std_L, new_L, scaling)) %>% 
-  distinct() %>% 
-  rowwise() %>% 
-  mutate(data = list(data[,c(1,2,3,5)])) %>% 
-  unnest(cols=data) %>%
-  rename(L_allometric_old = L_allometric) %>%
-  pivot_longer(cols=c(L_allometric_old, L_allometric_new), names_to="L_formula", values_to = "L_allometric", names_prefix = "L_allometric_")
-
 output_R2_yr2_clean <- output_R2_yr2 %>%
-  ungroup() %>%
-  group_by(type, level, res, L_formula) %>%
+  unnest(cols = std_L) %>% 
+  ungroup() %>% 
+  group_by(type, level, res) %>% 
   mutate(Temp_C = T_R2_Y2-273.15, #conversion back to Celsius from Kelvin
          Date=R2_date_seq_Y2,
          source="Narragansett Bay S 2")
@@ -270,33 +226,38 @@ NBS2_Y2_meandat <- KelpY2[KelpY2$SiteLine == "Narragansett Bay S 2",] %>%
 field_data_NB_Y2 <- bind_rows(list("Narragansett Bay N" = NBN1_Y2_meandat, "Narragansett Bay S 1" = NBS1_Y2_meandat, "Narragansett Bay S 2" =NBS2_Y2_meandat), .id="source")
 
 ### Combine with model data ####
-rmse_NB_Y2 <- field_data_NB_Y2 %>% group_by(source) %>% left_join((all_output_NB_yr2 %>% group_by(source))) %>% group_by(source, params, L_formula, type) %>% summarise(rmse = rmse(mean_length, L_allometric))
+rmse_NB_Y2 <- field_data_NB_Y2 %>% group_by(source) %>% 
+  left_join((all_output_NB_yr2 %>% group_by(source))) %>% 
+  group_by(source, params, type) %>% summarise(rmse = rmse(mean_length, L_allometric))
 
-rmse_NB_Y2 %>% filter(params=="orig", L_formula=="old") #check to make sure it's the same as original paper
+rmse_NB_Y2 %>% filter(params=="orig") #check to make sure it's the same as original paper
 
-
-ggplot(data=rmse_NB_Y2 %>% ungroup() %>% filter(type!="stress"), aes(x=reorder_within(params, rmse, list(L_formula, source)), y=rmse, fill=params)) +
+ggplot(data=rmse_NB_Y2 %>% ungroup() %>% filter(type!="stress"), aes(x=reorder_within(params, rmse, source), y=rmse, fill=params)) +
   geom_col()+
   geom_text(aes(label = round(rmse,1), vjust = -0.2))+
-  facet_wrap(L_formula~source, scales = "free_x")+
+  facet_wrap(~source, scales = "free_x")+
   scale_x_reordered()
 
-ggplot(data=rmse_NB_Y2 %>% ungroup() %>% filter(L_formula=="old", type!="ctrl"), aes(x=reorder_within(params, rmse, source), y=rmse, fill=params)) +
+ggplot(data=rmse_NB_Y2 %>% ungroup() %>% filter(type!="ctrl"), aes(x=reorder_within(params, rmse, source), y=rmse, fill=params)) +
   geom_col()+
   geom_text(aes(label = round(rmse,1), vjust = -0.2))+
   facet_wrap(~source, scales = "free_x")+
   scale_x_reordered()+ggtitle("Stress Y2")+labs(y="RMSE",x=NULL)
 
-
-
-ggplot(all_output_NB_yr2 %>% filter(L_formula=="old", params %in% c("orig", "high", "high_rep", "high_cross")))+
+ggplot(all_output_NB_yr1 %>% filter(params %in% c("orig", "high", "high_rep", "high_cross")))+
   geom_smooth(aes(x=Date, y=L_allometric, color=params, linetype=type))+
-  geom_point(data=field_data_NB_Y2, aes(x=Date, y=mean_length))+
+  geom_point(data=field_data_NB_Y1, aes(x=Date, y=mean_length))+
   facet_wrap(~source, scales = "free_x")
   
-View(rmse_NB_Y2 %>% ungroup() %>% filter(L_formula=="old", params %in% c("orig", "high", "high_rep", "high_cross")) %>% select(-L_formula))
+View(rmse_NB_Y2 %>% ungroup() %>% filter(params %in% c("orig", "high", "high_rep", "high_cross")))
 
 
-orig_rmse <- rmse_NB_Y2 %>% ungroup() %>% filter(L_formula=="old", params =="orig") %>% select(source,rmse)
+all_rmse <- bind_rows(rmse_dat_new %>% mutate(year=1), rmse_dat_Y2 %>% mutate(year=2), rmse_NB_Y1 %>% mutate(year=1), rmse_NB_Y2%>% mutate(year=2))
 
-rmse_NB_Y2 %>% ungroup() %>% filter(L_formula=="old", params %in% c("orig", "high", "high_rep", "high_cross")) %>% select(-L_formula) %>% left_join(orig_rmse, by="source") %>% mutate(improvement = abs(rmse.x-rmse.y))
+orig_rmse <- all_rmse %>% filter(params =="orig") %>% ungroup()
+
+all_rmse <- all_rmse %>% bind_rows(orig_rmse %>% mutate(type="stress")) %>% bind_rows(orig_rmse %>% mutate(type="ctrl"))
+
+all_rmse <- all_rmse %>% ungroup() %>% left_join(orig_rmse %>% mutate(orig_rmse = rmse) %>% select(source, year, orig_rmse), by=c("source", "year")) %>% mutate(improvement = orig_rmse-rmse)
+
+perc_imp <- all_rmse %>% mutate(imp = if_else(improvement>0, TRUE, FALSE)) %>% group_by(params, type) %>% summarize(num_imp = sum(imp), perc_imp = sum(imp)/14, mean_imp = mean(if_else(improvement>0, improvement, 0)))

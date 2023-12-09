@@ -1,7 +1,5 @@
 ### Narragansett Bay Year 1 ################################################################################################################# 
 
-# INCLUDES NEW ALLOMETRIC EQUATION
-
 #Site names here begin with names other than those used in the manuscript
 #Wickford = Narragansett Bay N
 #Rome Point = Narragansett Bay S
@@ -58,7 +56,7 @@ CO_2 <- mean(Segarra2002Carbon$TCO2_micromolPERkg)/1000000 #(mol CO2/L)
 
 # Using same data frame for irradiance, just different subset
 
-###### Temp forcing set-up year 2 #############
+###### Temp forcing set-up year 1 #############
 # NB N (Wickford)
 Wickford_Y1_hobo_orig <- read.csv("Wickford_Y1_hobo.csv", header = TRUE, fileEncoding="UTF-8-BOM") #Import Wickford Hobo data
 Wickford_Y1_hobo_orig$DateTime <- mdy_hms(Wickford_Y1_hobo_orig$DateTime) #convert time field
@@ -73,7 +71,7 @@ W_date_seq_Y1 <- seq(as_datetime("2017-12-4 12:00:00"), as_datetime("2018-04-21 
 R1_date_seq_Y1 <- seq(as_datetime("2017-11-1 12:00:00"), as_datetime("2018-04-21 12:00:00"), by="hour")
 R2_date_seq_Y1 <-seq(as_datetime("2017-12-6 12:00:00"), as_datetime("2018-04-21 12:00:00"), by="hour")
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-### FIELD DATA MODEL RUNS YR 2 ####
+### FIELD DATA MODEL RUNS YR 1 ####
 
 ### Wickford ####
 N <- Wickford_WSA[c("Date","NitrateNitrite_uM")] #new data frame with the relevant columns
@@ -96,33 +94,19 @@ T_W_Y1 <- T_field(0:3312) #For ease of plotting the temp forcing
 ###### Model runs ######
 # (the differential equation solver)
 
-plan(multisession, workers=availableCores())
+#plan(multisession, workers=availableCores())
 
 output_W_yr1 <- params_nested %>% mutate(std_L = future_map(data, function(df) {
   temp_params <- params_Lo
   temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
   ode_output<- as.data.frame(ode(y = state_Lo, t = times_Y1_W, func = rates_Lo, parms = temp_params)) %>% select(time, W, L_allometric)
   return(ode_output)
-})) %>% mutate(new_L = future_map(data, function(df) {
-  temp_params <- params_Lo
-  temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
-  ode_output<- as.data.frame(ode(y = state_Lo, t = times_Y1_W, func = rates_L_new, parms = temp_params)) %>% select(time, L_allometric) %>% mutate(L_allometric_new = L_allometric,.keep="unused")
-  return(ode_output)
 })) %>% select(-data)
 
-output_W_yr1 <- output_W_yr1 %>%
-  mutate(data = future_map2(std_L, new_L, ~ cbind(.x,.y))) %>%
-  select(-c(std_L, new_L, scaling)) %>% 
-  distinct() %>% 
-  rowwise() %>% 
-  mutate(data = list(data[,c(1,2,3,5)])) %>% 
-  unnest(cols=data) %>%
-  rename(L_allometric_old = L_allometric) %>%
-  pivot_longer(cols=c(L_allometric_old, L_allometric_new), names_to="L_formula", values_to = "L_allometric", names_prefix = "L_allometric_")
-
 output_W_yr1_clean <- output_W_yr1 %>%
+  unnest(cols = std_L) %>% 
   ungroup() %>% 
-  group_by(type, level, res, L_formula) %>% 
+  group_by(type, level, res) %>% 
   mutate(Temp_C = T_W_Y1-273.15, #conversion back to Celsius from Kelvin
          Date=W_date_seq_Y1,
          source="Narragansett Bay N")
@@ -138,8 +122,8 @@ N$NitrateNitrite_uM <- N$NitrateNitrite_uM/1000000 #convert from micromoles/L to
 N_field <- approxfun(x = c(114*24, 148*24, 0, 71*24, 92*24, 171*24), y = c(N$NitrateNitrite_uM[1:3], N$NitrateNitrite_uM[5:7]), method = "linear", rule = 2) #N forcing function
 
 ###### Irradiance forcing set-up #
-NOAA_Irradiance_RomePtY1 <-  NOAA_Irradiance$PAR[5750:6990] #subset by seq(as_datetime("2018-12-20 12:00:00"), as_datetime("2019-05-24 12:00:00"), by="hour")
-I_field <- approxfun(x = seq(from = 0, to = 3720, by = 3), y = NOAA_Irradiance_RomePtY1, method = "linear", rule = 2) #irradiance forcing function
+NOAA_Irradiance_RomePty1 <-  NOAA_Irradiance$PAR[2438:3806] #subset by seq(as_datetime("2017-11-1 12:00:00"), as_datetime("2018-04-21 12:00:00"), by="hour")
+I_field <- approxfun(x = seq(from = 0, to = 4104, by = 3), y = NOAA_Irradiance_RomePty1, method = "linear", rule = 2) #irradiance forcing function
 
 RomePoint_Y1_hobotemp <- RomePoint_Y1_hobotemp_orig[6:16425,] #subset based on 2017-11-01 13:15:00 start and 2018-04-21 14:00:00 end
 RomePointT_hourly <- ceiling_date(RomePoint_Y1_hobotemp$DateTime, unit = "hour") #determine dates to aggregate around
@@ -156,26 +140,12 @@ output_R1_yr1 <- params_nested %>% mutate(std_L = future_map(data, function(df) 
   temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
   ode_output<- as.data.frame(ode(y = state_Lo, t = times_Y1_R1, func = rates_Lo, parms = temp_params)) %>% select(time, W, L_allometric)
   ode_output
-})) %>% mutate(new_L = future_map(data, function(df) {
-  temp_params <- params_Lo
-  temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
-  ode_output<- as.data.frame(ode(y = state_Lo, t = times_Y1_R1, func = rates_L_new, parms = temp_params)) %>% select(time, L_allometric) %>% mutate(L_allometric_new = L_allometric,.keep="unused")
-  ode_output
 })) %>% select(-data)
 
-output_R1_yr1 <- output_R1_yr1 %>%
-  mutate(data = future_map2(std_L, new_L, ~ cbind(.x,.y))) %>%
-  select(-c(std_L, new_L, scaling)) %>% 
-  distinct() %>% 
-  rowwise() %>% 
-  mutate(data = list(data[,c(1,2,3,5)])) %>% 
-  unnest(cols=data) %>%
-  rename(L_allometric_old = L_allometric) %>%
-  pivot_longer(cols=c(L_allometric_old, L_allometric_new), names_to="L_formula", values_to = "L_allometric", names_prefix = "L_allometric_")
-
 output_R1_yr1_clean <- output_R1_yr1 %>%
-  ungroup() %>%
-  group_by(type, level, res, L_formula) %>%
+  unnest(cols = std_L) %>% 
+  ungroup() %>% 
+  group_by(type, level, res) %>% 
   mutate(Temp_C = T_R1_Y1-273.15, #conversion back to Celsius from Kelvin
          Date=R1_date_seq_Y1,
          source="Narragansett Bay S 1")
@@ -188,7 +158,6 @@ N_field <- approxfun(x = c(79*24, 113*24, -25*24, 57*24, 136*24), y = c(N$Nitrat
 
 NOAA_Irradiance_RomePty1_L2 <-  NOAA_Irradiance$PAR[2718:3806] #subset by seq(as_datetime("2017-12-6 12:00:00"), as_datetime("2018-04-21 12:00:00"), by="hour")
 I_field <- approxfun(x = seq(from = 0, to = 3264, by = 3), y = NOAA_Irradiance_RomePty1_L2, method = "linear", rule = 2) #irradiance forcing function
-
 
 RomePoint_Y1_hobotemp <- RomePoint_Y1_hobotemp_orig[3313:16425,] #subset based on 2017-12-06 00:00:00 - 2018-04-21 14:00:00
 RomePointT_hourly <- ceiling_date(RomePoint_Y1_hobotemp$DateTime, unit = "hour") #determine dates to aggregate around
@@ -204,26 +173,12 @@ output_R2_yr1 <- params_nested %>% mutate(std_L = future_map(data, function(df) 
   temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
   ode_output<- as.data.frame(ode(y = state_Lo, t = times_Y1_R2, func = rates_Lo, parms = temp_params)) %>% select(time, W, L_allometric)
   ode_output
-})) %>% mutate(new_L = future_map(data, function(df) {
-  temp_params <- params_Lo
-  temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
-  ode_output<- as.data.frame(ode(y = state_Lo, t = times_Y1_R2, func = rates_L_new, parms = temp_params)) %>% select(time, L_allometric) %>% mutate(L_allometric_new = L_allometric,.keep="unused")
-  ode_output
 })) %>% select(-data)
 
-output_R2_yr1 <- output_R2_yr1 %>%
-  mutate(data = future_map2(std_L, new_L, ~ cbind(.x,.y))) %>%
-  select(-c(std_L, new_L, scaling)) %>% 
-  distinct() %>% 
-  rowwise() %>% 
-  mutate(data = list(data[,c(1,2,3,5)])) %>% 
-  unnest(cols=data) %>%
-  rename(L_allometric_old = L_allometric) %>%
-  pivot_longer(cols=c(L_allometric_old, L_allometric_new), names_to="L_formula", values_to = "L_allometric", names_prefix = "L_allometric_")
-
 output_R2_yr1_clean <- output_R2_yr1 %>%
-  ungroup() %>%
-  group_by(type, level, res, L_formula) %>%
+  unnest(cols = std_L) %>% 
+  ungroup() %>% 
+  group_by(type, level, res) %>% 
   mutate(Temp_C = T_R2_Y1-273.15, #conversion back to Celsius from Kelvin
          Date=R2_date_seq_Y1,
          source="Narragansett Bay S 2")
@@ -277,13 +232,17 @@ NBS2_Y1_meandat <- KelpY1[KelpY1$SiteLine == "Narragansett Bay S 2",] %>%
 field_data_NB_Y1 <- bind_rows(list("Narragansett Bay N" = NBN1_Y1_meandat, "Narragansett Bay S 1" = NBS1_Y1_meandat, "Narragansett Bay S 2" =NBS2_Y1_meandat), .id="source")
 
 ### Combine with model data ####
-rmse_NB_Y1 <- field_data_NB_Y1 %>% group_by(source) %>% left_join((all_output_NB_yr1 %>% group_by(source))) %>% group_by(source, params, L_formula, type) %>% summarise(rmse = rmse(mean_length, L_allometric))
+rmse_NB_Y1 <- field_data_NB_Y1 %>% group_by(source) %>% left_join((all_output_NB_yr1 %>% group_by(source))) %>% group_by(source, params,type) %>% summarise(rmse = rmse(mean_length, L_allometric))
 
-rmse_NB_Y1 %>% filter(params=="orig", L_formula=="old") #check to make sure it's the same as original paper
+rmse_NB_Y1 %>% filter(params=="orig") #check to make sure it's the same as original paper
 
 
-ggplot(data=rmse_NB_Y1 %>% ungroup() %>% filter(type!="stress"), aes(x=reorder_within(params, rmse, list(L_formula, source)), y=rmse, fill=params)) +
+ggplot(data=rmse_NB_Y1 %>% ungroup() %>% filter(type!="stress"), aes(x=reorder_within(params, rmse, source), y=rmse, fill=params)) +
   geom_col()+
   geom_text(aes(label = round(rmse,1), vjust = -0.2))+
-  facet_wrap(L_formula~source, scales = "free_x")+
+  facet_wrap(~source, scales = "free_x")+
   scale_x_reordered()
+
+ggplot(data=all_output_NB_yr1 %>% filter(params=="high"|params=="orig"), aes(x=Date, y=L_allometric, color=params, linetype=type)) +
+  geom_smooth()+
+  facet_wrap(~source, scales="free_y")

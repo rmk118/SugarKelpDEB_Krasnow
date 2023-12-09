@@ -499,3 +499,8 @@ z$zPAR <- na.approx(z$zPAR, rule=2)
 # Only keep index values from sample data
 z <- z[index(zT),]
 Z <- as_tibble(z) %>% mutate(PAR=as.double(zPAR), nitrate=as.double(zN), .keep="unused", date=temp_forcing$date) %>% mutate(across(where(is.character), ~as.double(.x)))
+
+
+growth_data_orig %>% filter(str_detect(Male.GP,"FW"))
+
+View(growth_data_orig %>% select(cross, Female.GP, Male.GP) %>% distinct() %>% na.omit() %>% left_join(growth_rates_no_flags, by="cross") %>% select(cross, Female.GP, Male.GP, ctrl_group, stress_group) %>% distinct())

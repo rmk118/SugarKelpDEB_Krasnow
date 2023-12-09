@@ -38,7 +38,7 @@ ggplot(data=nitrate2)+
   theme_light()
 
 #### Growth data ####################################################################
-growth_data <- read.csv("~/Downloads/MBL_SES/outdoorExpt/growth.csv") %>% #import data
+growth_data_orig <- read.csv("~/Downloads/MBL_SES/outdoorExpt/growth.csv") %>% #import data
   mutate(date = mdy(Date), #fix date column
   #Shorten variable names and change to factors as necessary
          heat_test_f = na_if(Heat.testesd.Female.GP.ID,"#N/A"),
@@ -51,7 +51,7 @@ growth_data <- read.csv("~/Downloads/MBL_SES/outdoorExpt/growth.csv") %>% #impor
          id = paste(cross, trt, rep, sep="."), #create ID variable as cross.treatment.replicate
          .before = 3, .keep="unused")
 
-growth_data <- growth_data %>% 
+growth_data <- growth_data_orig %>% 
   select(c(date, blade_len,hp, cross, trt, rep, id, comments)) %>% #select relevant columns
   complete(date, id) %>%
   filter(hp>9) #the hole punch was done 10cm from the base, this gets rid of a few instances of potential measuring error or degradation while allowing slight room for error
@@ -540,13 +540,14 @@ ggplot()+
                      labels=c("high"="High", "med"="Medium", "low"="Low"))
 
 myPlot<-ggplot()+
-  geom_line(data=all_calibrations %>% group_by(type, level, res) %>% filter(type=="stress", res=="all"), aes(x=temp_smooth-273.15, y=std_rate, color=level), linewidth=2)+
+  geom_line(data=all_calibrations %>% group_by(type, level, res) %>% filter(type=="ctrl", res=="all" | res=="means"), aes(x=temp_smooth-273.15, y=std_rate, color=level), linewidth=2)+
   theme_bw()+
   labs(x="Temperature (°C)", y="Standardized rate", color=NULL)+
   scale_color_manual(values=c("high"="#dd4124", "med"="#edd746","low"='#0f85a0'),
                      breaks=c("high", "med", "low"),
                      labels=c("high"="High", "med"="Medium", "low"="Low"))+
   theme(legend.position = "none")+
-  ylim(0,2.6)
+  ylim(0,2.6)+
+  facet_wrap(~res)
 myPlot
 

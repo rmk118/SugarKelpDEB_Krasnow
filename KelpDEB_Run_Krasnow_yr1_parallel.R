@@ -1,7 +1,5 @@
 ### Point Judith Point Year 1 ################################################################################################################# 
 
-# INCLUDES NEW ALLOMETRIC EQUATION
-
 #Site names here begin with names other than those used in the manuscript
 #Sled = Pt Judith Pond N
 #Dredge = Pt Judith Pond S
@@ -117,7 +115,7 @@ params_Lo <- c(#maximum volume-specific assimilation rate of N before temperatur
                #temperature at which rate parameters are given
                T_0 = 20 + 273.15) # K
 
-params_allometric <- bind_rows(list("rates_Lo"=params, "rates_L_new"=params), .id="scaling")
+params_allometric <- bind_rows(list("rates_Lo"=params))
 params_nested <- params_allometric %>% nest(data = c(T_A, T_H, T_AH))
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -225,26 +223,12 @@ output_sled1_yr1 <- params_nested %>% mutate(std_L = future_map(data, function(d
   temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
   ode_output<- as.data.frame(ode(y = state_Lo, t = times_Lo_Sled1, func = rates_Lo, parms = temp_params)) %>% select(time, W, L_allometric)
   ode_output
-})) %>% mutate(new_L = future_map(data, function(df) {
-  temp_params <- params_Lo
-  temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
-  ode_output<- as.data.frame(ode(y = state_Lo, t = times_Lo_Sled1, func = rates_L_new, parms = temp_params)) %>% select(time, L_allometric) %>% mutate(L_allometric_new = L_allometric,.keep="unused")
-  ode_output
 })) %>% select(-data)
 
-output_sled1_yr1 <- output_sled1_yr1 %>%
-  mutate(data = future_map2(std_L, new_L, ~ cbind(.x,.y))) %>%
-  select(-c(std_L, new_L, scaling)) %>% 
-  distinct() %>% 
-  rowwise() %>% 
-  mutate(data = list(data[,c(1,2,3,5)])) %>% 
-  unnest(cols=data) %>%
-  rename(L_allometric_old = L_allometric) %>%
-  pivot_longer(cols=c(L_allometric_old, L_allometric_new), names_to="L_formula", values_to = "L_allometric", names_prefix = "L_allometric_")
-
 output_sled1_yr1_clean <- output_sled1_yr1 %>%
+   unnest(cols=std_L) %>% 
   ungroup() %>% 
-  group_by(type, level, res, L_formula) %>% 
+  group_by(type, level, res) %>% 
   mutate(Temp_C = T_Sled1_Y1-273.15, #conversion back to Celsius from Kelvin
          Date=sled1_date_seq,
          source="Point Judith Pond N 1")
@@ -276,33 +260,18 @@ T_field <- approxfun(x = c(0:3336), y = c(fd, AvgTempKbyhr$x), method = "linear"
 T_Sled2_Y1 <- T_field(0:3336) #for later ease in plotting the forcing
 
 ##### Model runs ####
-plan(multisession, workers=availableCores())
 
 output_sled2_yr1 <- params_nested %>% mutate(std_L = future_map(data, function(df) {
   temp_params <- params_Lo
   temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
   ode_output<- as.data.frame(ode(y = state_Lo, t = times_Lo_Sled2, func = rates_Lo, parms = temp_params)) %>% select(time, W, L_allometric)
   ode_output
-})) %>% mutate(new_L = future_map(data, function(df) {
-  temp_params <- params_Lo
-  temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
-  ode_output<- as.data.frame(ode(y = state_Lo, t = times_Lo_Sled2, func = rates_L_new, parms = temp_params)) %>% select(time, L_allometric) %>% mutate(L_allometric_new = L_allometric,.keep="unused")
-  ode_output
 })) %>% select(-data)
 
-output_sled2_yr1 <- output_sled2_yr1 %>%
-  mutate(data = future_map2(std_L, new_L, ~ cbind(.x,.y))) %>%
-  select(-c(std_L, new_L, scaling)) %>% 
-  distinct() %>% 
-  rowwise() %>% 
-  mutate(data = list(data[,c(1,2,3,5)])) %>% 
-  unnest(cols=data) %>%
-  rename(L_allometric_old = L_allometric) %>%
-  pivot_longer(cols=c(L_allometric_old, L_allometric_new), names_to="L_formula", values_to = "L_allometric", names_prefix = "L_allometric_")
-
 output_sled2_yr1_clean <- output_sled2_yr1 %>%
+  unnest(cols=std_L) %>% 
   ungroup() %>% 
-  group_by(type, level, res, L_formula) %>%
+  group_by(type, level, res) %>%
   mutate(Temp_C = T_Sled2_Y1-273.15, #conversion back to Celsius from Kelvin
          Date=sled2_date_seq,
          source="Point Judith Pond N 2")
@@ -326,33 +295,18 @@ T_field <- approxfun(x = c(0:4128), y = AvgTempKbyhr$x, method = "linear", rule 
 T_Dredge1_Y1 <- T_field(0:4128) #for ease in later plotting of the forcing
 
 #### Model runs ####
-plan(multisession, workers=availableCores())
 
 output_dredge1_yr1 <- params_nested %>% mutate(std_L = future_map(data, function(df) {
   temp_params <- params_Lo
   temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
   ode_output<- as.data.frame(ode(y = state_Lo, t = times_Lo_Dredge1, func = rates_Lo, parms = temp_params)) %>% select(time, W, L_allometric)
   ode_output
-})) %>% mutate(new_L = future_map(data, function(df) {
-  temp_params <- params_Lo
-  temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
-  ode_output<- as.data.frame(ode(y = state_Lo, t = times_Lo_Dredge1, func = rates_L_new, parms = temp_params)) %>% select(time, L_allometric) %>% mutate(L_allometric_new = L_allometric,.keep="unused")
-  ode_output
 })) %>% select(-data)
-
-output_dredge1_yr1 <- output_dredge1_yr1 %>%
-  mutate(data = future_map2(std_L, new_L, ~ cbind(.x,.y))) %>%
-  select(-c(std_L, new_L, scaling)) %>% 
-  distinct() %>% 
-  rowwise() %>% 
-  mutate(data = list(data[,c(1,2,3,5)])) %>% 
-  unnest(cols=data) %>%
-  rename(L_allometric_old = L_allometric) %>%
-  pivot_longer(cols=c(L_allometric_old, L_allometric_new), names_to="L_formula", values_to = "L_allometric", names_prefix = "L_allometric_")
 
 output_dredge1_yr1_clean <- output_dredge1_yr1 %>%
   ungroup() %>% 
-  group_by(type, level, res, L_formula) %>%
+  unnest(cols=std_L) %>% 
+  group_by(type, level, res) %>%
   mutate(Temp_C = T_Dredge1_Y1-273.15, #conversion back to Celsius from Kelvin
          Date=dredge1_date_seq,
          source="Point Judith Pond S 1")
@@ -376,40 +330,25 @@ T_field <- approxfun(x = c(0:3456), y = c(AvgTempKbyhr_sub$x), method = "linear"
 T_Dredge2_Y1 <- T_field(0:3456) #for ease of later plotting the temperature forcing
 
 #### Model runs ####
-plan(multisession, workers=availableCores())
 
 output_dredge2_yr1 <- params_nested %>% mutate(std_L = future_map(data, function(df) {
   temp_params <- params_Lo
   temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
   ode_output<- as.data.frame(ode(y = state_Lo, t = times_Lo_Dredge2, func = rates_Lo, parms = temp_params)) %>% select(time, W, L_allometric)
   ode_output
-})) %>% mutate(new_L = future_map(data, function(df) {
-  temp_params <- params_Lo
-  temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
-  ode_output<- as.data.frame(ode(y = state_Lo, t = times_Lo_Dredge2, func = rates_L_new, parms = temp_params)) %>% select(time, L_allometric) %>% mutate(L_allometric_new = L_allometric,.keep="unused")
-  ode_output
 })) %>% select(-data)
 
-output_dredge2_yr1 <- output_dredge2_yr1 %>%
-  mutate(data = future_map2(std_L, new_L, ~ cbind(.x,.y))) %>%
-  select(-c(std_L, new_L, scaling)) %>% 
-  distinct() %>% 
-  rowwise() %>% 
-  mutate(data = list(data[,c(1,2,3,5)])) %>% 
-  unnest(cols=data) %>%
-  rename(L_allometric_old = L_allometric) %>%
-  pivot_longer(cols=c(L_allometric_old, L_allometric_new), names_to="L_formula", values_to = "L_allometric", names_prefix = "L_allometric_")
-
 output_dredge2_yr1_clean <- output_dredge2_yr1 %>%
+  unnest(cols=std_L) %>% 
   ungroup() %>% 
-  group_by(type, level, res, L_formula) %>%
+  group_by(type, level, res) %>%
   mutate(Temp_C = T_Dredge2_Y1-273.15, #conversion back to Celsius from Kelvin
          Date=dredge2_date_seq,
          source="Point Judith Pond S 2")
 
 
 #combine all output into one dataframe
-all_output <- rbind(output_sled1_yr1_clean, output_sled2_yr1_clean, output_dredge1_yr1_clean, output_dredge2_yr1_clean) %>% ungroup() %>% mutate(
+all_output_yr1 <- rbind(output_sled1_yr1_clean, output_sled2_yr1_clean, output_dredge1_yr1_clean, output_dredge2_yr1_clean) %>% ungroup() %>% mutate(
   params = case_when(
     res=="orig" ~ "orig",
     res=="lit" ~ "new",
@@ -466,29 +405,46 @@ PJS2_meandat <- KelpY1[KelpY1$SiteLine == "Point Judith Pond S 2",] %>%
 
 field_data <- bind_rows(list("Point Judith Pond N 1" = PJN1_meandat, "Point Judith Pond N 2" = PJN2_meandat, "Point Judith Pond S 1" = PJS1_meandat, "Point Judith Pond S 2" =PJS2_meandat), .id="source")
 
-rmse_dat_new <- field_data %>% group_by(source) %>% left_join((all_output %>% group_by(source))) %>% group_by(source, params, L_formula, type) %>% summarise(rmse = rmse(mean_length, L_allometric))
+rmse_dat_new <- field_data %>% group_by(source) %>% left_join((all_output_yr1 %>% group_by(source))) %>% group_by(source, params, type) %>% summarise(rmse = rmse(mean_length, L_allometric))
 
-rmse_dat_new %>% filter(params=="orig", L_formula=="old") #check to make sure it's the same as original paper
+rmse_dat_new %>% filter(params=="orig") #check to make sure it's the same as original paper
 
-ggplot(data=rmse_dat_new %>% ungroup() %>% filter(type!="stress"), aes(x=reorder_within(params, rmse, list(L_formula, source)), y=rmse, fill=params)) +
-  geom_col()+
-  geom_text(aes(label = round(rmse,1), vjust = -0.2))+
-  facet_wrap(L_formula~source, scales = "free_x")+
-  scale_x_reordered()
 
 ggplot(data=rmse_dat_new %>% ungroup() %>% filter(type!="stress"), aes(x=reorder(params, rmse), y=rmse, fill=params)) +
   geom_col()+
   geom_text(aes(label = round(rmse,1), vjust = -0.2))+
-  facet_grid(L_formula~source)
+  facet_wrap(~source)
 
-ggplot(data=all_output %>% filter(res!="cross"), aes(x=Date, y=L_allometric, color=params, linetype=L_formula)) +
+ggplot(data=all_output_yr1 %>% filter(res!="cross"), aes(x=Date, y=L_allometric, color=params)) +
   geom_line()+
   facet_grid(type~source)
 
-all_output %>% filter(L_formula=="new", params=="high_cross", source=="Point Judith Pond N 1")
-
-ggplot(data=rmse_dat_new %>% ungroup()%>% filter(str_detect(params, "cross", TRUE), L_formula=="new"), aes(x=reorder_within(params, rmse, list(source, L_formula)), y=rmse, fill=params)) +
+ggplot(data=rmse_dat_new %>% ungroup()%>% filter(str_detect(params, "cross", TRUE)), aes(x=reorder_within(params, rmse,list(type,source)), y=rmse, fill=params)) +
   geom_col()+
   geom_text(aes(label = round(rmse,1), vjust = -0.2))+
   scale_x_reordered()+
+  facet_wrap(type~source, scales = "free_x")
+
+pjp_plot1 <- ggplot(all_output_yr1 %>% filter(params %in% c("orig", "high", "high_rep"), type!="stress"))+
+  geom_smooth(aes(x=Date, y=L_allometric, color=params))+
+  geom_point(data=field_data, aes(x=Date, y=mean_length))+
+  facet_wrap(~source, scales = "free")
+
+pjp_plot2 <-ggplot(all_output_yr2 %>% filter(params %in% c("orig", "high", "high_rep"), type!="stress"))+
+  geom_smooth(aes(x=Date, y=L_allometric, color=params))+
+  geom_point(data=field_data_Y2, aes(x=Date, y=mean_length))+
+  facet_wrap(~source, scales = "free")
+
+
+nb_plot1 <-ggplot(all_output_NB_yr1 %>% filter(params %in% c("orig", "high", "high_rep"), type!="stress"))+
+  geom_smooth(aes(x=Date, y=L_allometric, color=params))+
+  geom_point(data=field_data_NB_Y1, aes(x=Date, y=mean_length))+
   facet_wrap(~source, scales = "free_x")
+
+nb_plot2 <- ggplot(all_output_NB_yr2 %>% filter(params %in% c("orig", "high", "high_rep"), type!="stress"))+
+  geom_smooth(aes(x=Date, y=L_allometric, color=params))+
+  geom_point(data=field_data_NB_Y2, aes(x=Date, y=mean_length))+
+  facet_wrap(~source, scales = "free_x")
+
+(nb_plot1+pjp_plot1)/(nb_plot2+pjp_plot2) +
+  plot_layout(guides = 'collect')

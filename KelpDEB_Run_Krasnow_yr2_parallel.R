@@ -1,6 +1,4 @@
-### Point Judith Point Year 2 ################################################################################################################# 
-
-# INCLUDES NEW ALLOMETRIC EQUATION
+### Point Judith Point Year 2 #################################################################################################################
 
 #Site names here begin with names other than those used in the manuscript
 #Sled = Pt Judith Pond N
@@ -57,14 +55,13 @@ Sled_Y2_Hobo_orig <- read.csv("Sled_Y2_HoboLightTemp.csv", header = TRUE, fileEn
 Sled_Y2_Hobo_orig$DateTime <- mdy_hms(Sled_Y2_Hobo_orig$DateTime) #convert date time field
 Sled_Y2_Hobo_orig$Temp_K <- Sled_Y2_Hobo_orig$Temp_C+273.15 #create column with temp in K
 SledY2T_hourly <- ceiling_date(Sled_Y2_Hobo_orig$DateTime, unit = "hour") #determine times to aggregate around
-AvgTempKbyhr <- aggregate(Sled_Y2_Hobo_orig$Temp_K, by=list(SledY2T_hourly), mean) #calculate average hourly temp
 
 # Point Judith Pond S (dredge)
 Dredge_Y2_Hobo_orig <- read.csv("Dredge_Y2_HoboTempLight.csv", header = TRUE, fileEncoding="UTF-8-BOM") #import
 Dredge_Y2_Hobo_orig$DateTime <- mdy_hms(Dredge_Y2_Hobo_orig$DateTime) #convert date time field
 Dredge_Y2_Hobo_orig$Temp_K <- Dredge_Y2_Hobo_orig$Temp_C+273.15 #create column with temp in K
 DredgeY2T_hourly <- ceiling_date(Dredge_Y2_Hobo_orig$DateTime, unit = "hour") #determine what times to aggregate around
-AvgTempKbyhr <- aggregate(Dredge_Y2_Hobo$Temp_K, by=list(DredgeY2T_hourly), mean) #calculate average hourly temp
+AvgTempKbyhr <- aggregate(Dredge_Y2_Hobo_orig$Temp_K, by=list(DredgeY2T_hourly), mean) #calculate average hourly temp
 
 L1_date_seq_Y2 <- seq(as_datetime("2018-12-12 12:00:00"), as_datetime("2019-05-03 12:00:00"), by="hour") 
 L2_date_seq_Y2 <- seq(as_datetime("2019-02-06 12:00:00"), as_datetime("2019-05-03 12:00:00"), by="hour")
@@ -80,6 +77,7 @@ NOAA_Irradiance_Sledy2 <-  NOAA_Irradiance$PAR[5686:6822] #subset by seq(as_date
 I_field <- approxfun(x = seq(from = 0, to = 3408, by = 3), y = NOAA_Irradiance_Sledy2, method = "linear", rule = 2) #irradiance forcing function
 
 ###### Temp forcing set-up #
+AvgTempKbyhr <- aggregate(Sled_Y2_Hobo_orig$Temp_K, by=list(SledY2T_hourly), mean) #calculate average hourly temp
 AvgTempKbyhr <- AvgTempKbyhr[2:3385,] #subset
 fd <- rep(285, 25) #small section of replacement
 T_field <- approxfun(x = c(0:3408), y = c(AvgTempKbyhr$x, fd), method = "linear", rule = 2) #the temp forcing function
@@ -95,26 +93,12 @@ output_sled1_yr2 <- params_nested %>% mutate(std_L = future_map(data, function(d
   temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
   ode_output<- as.data.frame(ode(y = state_LoY2, t = times_Y2_Sled1, func = rates_Lo, parms = temp_params)) %>% select(time, W, L_allometric)
   return(ode_output)
-})) %>% mutate(new_L = future_map(data, function(df) {
-  temp_params <- params_Lo
-  temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
-  ode_output<- as.data.frame(ode(y = state_LoY2, t = times_Y2_Sled1, func = rates_L_new, parms = temp_params)) %>% select(time, L_allometric) %>% mutate(L_allometric_new = L_allometric,.keep="unused")
-  return(ode_output)
 })) %>% select(-data)
 
-output_sled1_yr2 <- output_sled1_yr2 %>%
-  mutate(data = future_map2(std_L, new_L, ~ cbind(.x,.y))) %>%
-  select(-c(std_L, new_L, scaling)) %>% 
-  distinct() %>% 
-  rowwise() %>% 
-  mutate(data = list(data[,c(1,2,3,5)])) %>% 
-  unnest(cols=data) %>%
-  rename(L_allometric_old = L_allometric) %>%
-  pivot_longer(cols=c(L_allometric_old, L_allometric_new), names_to="L_formula", values_to = "L_allometric", names_prefix = "L_allometric_")
-
 output_sled1_yr2_clean <- output_sled1_yr2 %>%
+  unnest(cols = std_L) %>% 
   ungroup() %>% 
-  group_by(type, level, res, L_formula) %>% 
+  group_by(type, level, res) %>% 
   mutate(Temp_C = T_Sled1_Y2-273.15, #conversion back to Celsius from Kelvin
          Date=L1_date_seq_Y2,
          source="Point Judith Pond N 1")
@@ -132,7 +116,8 @@ NOAA_Irradiance_Sledy2_L2 <-  NOAA_Irradiance$PAR[6134:6822] #subset by seq(as_d
 I_field <- approxfun(x = seq(from = 0, to = 2064, by = 3), y = NOAA_Irradiance_Sledy2_L2, method = "linear", rule = 2) #irradiance forcing function
 
 ###### Temp forcing set-Up #
-AvgTempKbyhr <- aggregate(Dredge_Y2_Hobo$Temp_K, by=list(DredgeY2T_hourly), mean) #calculate average hourly temp
+AvgTempKbyhr <- aggregate(Sled_Y2_Hobo_orig$Temp_K, by=list(SledY2T_hourly), mean) #calculate average hourly temp
+#calculate average hourly temp
 AvgTempKbyhr <- AvgTempKbyhr[1346:3385,] #subset
 fd <- rep(285, 25) #small data replacement
 T_field <- approxfun(x = c(0:2064), y = c(AvgTempKbyhr$x, fd), method = "linear", rule = 2) #the temp forcing function
@@ -145,26 +130,12 @@ output_sled2_yr2 <- params_nested %>% mutate(std_L = future_map(data, function(d
   temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
   ode_output<- as.data.frame(ode(y = state_LoY2, t = times_Y2_Sled2, func = rates_Lo, parms = temp_params)) %>% select(time, W, L_allometric)
   ode_output
-})) %>% mutate(new_L = future_map(data, function(df) {
-  temp_params <- params_Lo
-  temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
-  ode_output<- as.data.frame(ode(y = state_LoY2, t = times_Y2_Sled2, func = rates_L_new, parms = temp_params)) %>% select(time, L_allometric) %>% mutate(L_allometric_new = L_allometric,.keep="unused")
-  ode_output
 })) %>% select(-data)
 
-output_sled2_yr2 <- output_sled2_yr2 %>%
-  mutate(data = future_map2(std_L, new_L, ~ cbind(.x,.y))) %>%
-  select(-c(std_L, new_L, scaling)) %>% 
-  distinct() %>% 
-  rowwise() %>% 
-  mutate(data = list(data[,c(1,2,3,5)])) %>% 
-  unnest(cols=data) %>%
-  rename(L_allometric_old = L_allometric) %>%
-  pivot_longer(cols=c(L_allometric_old, L_allometric_new), names_to="L_formula", values_to = "L_allometric", names_prefix = "L_allometric_")
-
 output_sled2_yr2_clean <- output_sled2_yr2 %>%
+  unnest(cols = std_L) %>% 
   ungroup() %>% 
-  group_by(type, level, res, L_formula) %>%
+  group_by(type, level, res) %>% 
   mutate(Temp_C = T_Sled2_Y2-273.15, #conversion back to Celsius from Kelvin
          Date=L2_date_seq_Y2,
          source="Point Judith Pond N 2")
@@ -191,26 +162,12 @@ output_dredge1_yr2 <- params_nested %>% mutate(std_L = future_map(data, function
   temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
   ode_output<- as.data.frame(ode(y = state_LoY2, t = times_Y2_Dredge1, func = rates_Lo, parms = temp_params)) %>% select(time, W, L_allometric)
   ode_output
-})) %>% mutate(new_L = future_map(data, function(df) {
-  temp_params <- params_Lo
-  temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
-  ode_output<- as.data.frame(ode(y = state_LoY2, t = times_Y2_Dredge1, func = rates_L_new, parms = temp_params)) %>% select(time, L_allometric) %>% mutate(L_allometric_new = L_allometric,.keep="unused")
-  ode_output
 })) %>% select(-data)
 
-output_dredge1_yr2 <- output_dredge1_yr2 %>%
-  mutate(data = future_map2(std_L, new_L, ~ cbind(.x,.y))) %>%
-  select(-c(std_L, new_L, scaling)) %>% 
-  distinct() %>% 
-  rowwise() %>% 
-  mutate(data = list(data[,c(1,2,3,5)])) %>% 
-  unnest(cols=data) %>%
-  rename(L_allometric_old = L_allometric) %>%
-  pivot_longer(cols=c(L_allometric_old, L_allometric_new), names_to="L_formula", values_to = "L_allometric", names_prefix = "L_allometric_")
-
 output_dredge1_yr2_clean <- output_dredge1_yr2 %>%
-  ungroup() %>%
-  group_by(type, level, res, L_formula) %>%
+  unnest(cols = std_L) %>% 
+  ungroup() %>% 
+  group_by(type, level, res) %>% 
   mutate(Temp_C = T_Dredge1_Y2-273.15, #conversion back to Celsius from Kelvin
          Date=L1_date_seq_Y2,
          source="Point Judith Pond S 1")
@@ -236,26 +193,12 @@ output_dredge2_yr2 <- params_nested %>% mutate(std_L = future_map(data, function
   temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
   ode_output<- as.data.frame(ode(y = state_LoY2, t = times_Y2_Dredge2, func = rates_Lo, parms = temp_params)) %>% select(time, W, L_allometric)
   ode_output
-})) %>% mutate(new_L = future_map(data, function(df) {
-  temp_params <- params_Lo
-  temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
-  ode_output<- as.data.frame(ode(y = state_LoY2, t = times_Y2_Dredge2, func = rates_L_new, parms = temp_params)) %>% select(time, L_allometric) %>% mutate(L_allometric_new = L_allometric,.keep="unused")
-  ode_output
 })) %>% select(-data)
 
-output_dredge2_yr2 <- output_dredge2_yr2 %>%
-  mutate(data = future_map2(std_L, new_L, ~ cbind(.x,.y))) %>%
-  select(-c(std_L, new_L, scaling)) %>% 
-  distinct() %>% 
-  rowwise() %>% 
-  mutate(data = list(data[,c(1,2,3,5)])) %>% 
-  unnest(cols=data) %>%
-  rename(L_allometric_old = L_allometric) %>%
-  pivot_longer(cols=c(L_allometric_old, L_allometric_new), names_to="L_formula", values_to = "L_allometric", names_prefix = "L_allometric_")
-
 output_dredge2_yr2_clean <- output_dredge2_yr2 %>%
-  ungroup() %>%
-  group_by(type, level, res, L_formula) %>%
+  unnest(cols = std_L) %>% 
+  ungroup() %>% 
+  group_by(type, level, res) %>% 
   mutate(Temp_C = T_Dredge2_Y2-273.15, #conversion back to Celsius from Kelvin
          Date=L2_date_seq_Y2,
          source="Point Judith Pond S 2")
@@ -318,12 +261,26 @@ PJS2_Y2_meandat <- KelpY2[KelpY2$SiteLine == "Point Judith Pond S 2",] %>%
 
 field_data_Y2 <- bind_rows(list("Point Judith Pond N 1" = PJN1_Y2_meandat, "Point Judith Pond N 2" = PJN2_Y2_meandat, "Point Judith Pond S 1" = PJS1_Y2_meandat, "Point Judith Pond S 2" =PJS2_Y2_meandat), .id="source")
 
-rmse_dat_Y2 <- field_data_Y2 %>% group_by(source) %>% left_join((all_output_yr2 %>% group_by(source))) %>% group_by(source, params, L_formula, type) %>% summarise(rmse = rmse(mean_length, L_allometric))
+rmse_dat_Y2 <- field_data_Y2 %>% group_by(source) %>% left_join((all_output_yr2 %>% group_by(source))) %>% group_by(source, params, type) %>% summarise(rmse = rmse(mean_length, L_allometric))
 
-rmse_dat_Y2 %>% filter(params=="orig", L_formula=="old") #check to make sure it's the same as original paper
+rmse_dat_Y2 %>% filter(params=="orig") #check to make sure it's the same as original paper
 
-ggplot(data=rmse_dat_Y2 %>% ungroup() %>% filter(type!="stress"), aes(x=reorder_within(params, rmse, list(L_formula, source)), y=rmse, fill=params)) +
+ggplot(data=rmse_dat_Y2 %>% ungroup() %>% filter(type!="stress"), aes(x=reorder_within(params, rmse, list(source)), y=rmse, fill=params)) +
   geom_col()+
   geom_text(aes(label = round(rmse,1), vjust = -0.2))+
-  facet_wrap(L_formula~source, scales = "free_x")+
+  facet_wrap(~source, scales = "free_x")+
   scale_x_reordered()
+
+ggplot(data=rmse_dat_Y2 %>% ungroup() %>% filter(type!="stress", str_detect(params, "high")| str_detect(params,"orig")), aes(x=reorder_within(params, rmse, source), y=rmse, fill=params)) +
+  geom_col()+
+  geom_text(aes(label = round(rmse,1), vjust = -0.2))+
+  facet_wrap(~source, scales = "free_x")+
+  scale_x_reordered()
+
+ggplot(data=rmse_dat_Y2 %>% ungroup() %>% filter(type!="stress", str_detect(params, "high")| str_detect(params,"orig")), aes(x=source, y=rmse, group=params, fill=params)) +
+  geom_bar(stat="identity", position="dodge")+
+geom_text(aes(label = round(rmse,1), vjust = -0.2))
+
+ggplot(data=all_output_yr2 %>% filter(params=="high"|params=="orig"), aes(x=Date, y=L_allometric, color=params, linetype=type)) +
+  geom_smooth()+
+  facet_wrap(~source, scales="free_y")
