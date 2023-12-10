@@ -27,6 +27,7 @@ source("SolveR_R.R")
 source("KelpDEB_model.R")
 source("./outdoorExpt/outdoorHOBO/outdoor_HOBO.R")
 source("./outdoorExpt/outdoor_expt.R")
+#source("halves.R")
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ##### Minerals and Organics Section #####
@@ -238,6 +239,7 @@ output_sled1_yr1_clean <- output_sled1_yr1 %>%
   unnest(cols=std_L) %>% 
   ungroup() %>% 
   group_by(type, level, res) %>% 
+  #group_by(level, res) %>% 
   mutate(Temp_C = T_Sled1_Y1-273.15, #conversion back to Celsius from Kelvin
          Date=sled1_date_seq,
          source="Point Judith Pond N 1")
@@ -280,7 +282,8 @@ output_sled2_yr1 <- params_nested %>% mutate(std_L = future_map(data, function(d
 output_sled2_yr1_clean <- output_sled2_yr1 %>%
   unnest(cols=std_L) %>% 
   ungroup() %>% 
-  group_by(type, level, res) %>%
+ group_by(type, level, res) %>%
+ # group_by(level, res) %>%
   mutate(Temp_C = T_Sled2_Y1-273.15, #conversion back to Celsius from Kelvin
          Date=sled2_date_seq,
          source="Point Judith Pond N 2")
@@ -314,6 +317,7 @@ output_dredge1_yr1_clean <- output_dredge1_yr1 %>%
   ungroup() %>% 
   unnest(cols=std_L) %>% 
   group_by(type, level, res) %>%
+  #group_by(level, res) %>%
   mutate(Temp_C = T_Dredge1_Y1-273.15, #conversion back to Celsius from Kelvin
          Date=dredge1_date_seq,
          source="Point Judith Pond S 1")
@@ -349,6 +353,7 @@ output_dredge2_yr1_clean <- output_dredge2_yr1 %>%
   unnest(cols=std_L) %>% 
   ungroup() %>% 
   group_by(type, level, res) %>%
+  #group_by(level, res) %>%
   mutate(Temp_C = T_Dredge2_Y1-273.15, #conversion back to Celsius from Kelvin
          Date=dredge2_date_seq,
          source="Point Judith Pond S 2")
@@ -366,7 +371,11 @@ all_output_yr1 <- rbind(output_sled1_yr1_clean, output_sled2_yr1_clean, output_d
     level=="low" & res=="cross" ~ "low_cross",
     level=="high" & res=="all" ~ "high_rep",
     level=="med" & res=="all" ~ "med_rep",
-    level=="low" & res=="all" ~ "low_rep",
+    level=="low" & res=="all" ~ "low_rep"
+    # level=="top" & res=="means" ~ "top",
+    # level=="bottom" & res=="means" ~ "bottom",
+    # level=="top" & res=="cross" ~ "top_cross",
+    # level=="bottom" & res=="cross" ~ "bottom_cross"
   )
 ) 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -433,6 +442,7 @@ output_W_yr1_clean <- output_W_yr1 %>%
   unnest(cols = std_L) %>% 
   ungroup() %>% 
   group_by(type, level, res) %>% 
+  #group_by(level, res) %>%
   mutate(Temp_C = T_W_Y1-273.15, #conversion back to Celsius from Kelvin
          Date=W_date_seq_Y1,
          source="Narragansett Bay N")
@@ -470,6 +480,7 @@ output_R1_yr1_clean <- output_R1_yr1 %>%
   unnest(cols = std_L) %>% 
   ungroup() %>% 
   group_by(type, level, res) %>% 
+  #group_by(level, res) %>%
   mutate(Temp_C = T_R1_Y1-273.15, #conversion back to Celsius from Kelvin
          Date=R1_date_seq_Y1,
          source="Narragansett Bay S 1")
@@ -500,7 +511,8 @@ output_R2_yr1 <- params_nested %>% mutate(std_L = future_map(data, function(df) 
 output_R2_yr1_clean <- output_R2_yr1 %>%
   unnest(cols = std_L) %>% 
   ungroup() %>% 
-  group_by(type, level, res) %>% 
+  group_by(type, level, res) %>%
+  #group_by(level, res) %>%
   mutate(Temp_C = T_R2_Y1-273.15, #conversion back to Celsius from Kelvin
          Date=R2_date_seq_Y1,
          source="Narragansett Bay S 2")
@@ -518,7 +530,11 @@ all_output_NB_yr1 <- rbind(output_W_yr1_clean, output_R1_yr1_clean, output_R2_yr
     level=="low" & res=="cross" ~ "low_cross",
     level=="high" & res=="all" ~ "high_rep",
     level=="med" & res=="all" ~ "med_rep",
-    level=="low" & res=="all" ~ "low_rep",
+    level=="low" & res=="all" ~ "low_rep"
+    # level=="top" & res=="means" ~ "top",
+    # level=="bottom" & res=="means" ~ "bottom",
+    # level=="top" & res=="cross" ~ "top_cross",
+    # level=="bottom" & res=="cross" ~ "bottom_cross"
   )
 ) 
 
@@ -646,6 +662,7 @@ output_sled1_yr2_clean <- output_sled1_yr2 %>%
   unnest(cols = std_L) %>% 
   ungroup() %>% 
   group_by(type, level, res) %>% 
+  #group_by(level, res) %>%
   mutate(Temp_C = T_Sled1_Y2-273.15, #conversion back to Celsius from Kelvin
          Date=L1_date_seq_Y2,
          source="Point Judith Pond N 1")
@@ -681,6 +698,7 @@ output_sled2_yr2_clean <- output_sled2_yr2 %>%
   unnest(cols = std_L) %>% 
   ungroup() %>% 
   group_by(type, level, res) %>% 
+  #group_by(level, res) %>%
   mutate(Temp_C = T_Sled2_Y2-273.15, #conversion back to Celsius from Kelvin
          Date=L2_date_seq_Y2,
          source="Point Judith Pond N 2")
@@ -711,7 +729,8 @@ output_dredge1_yr2 <- params_nested %>% mutate(std_L = future_map(data, function
 output_dredge1_yr2_clean <- output_dredge1_yr2 %>%
   unnest(cols = std_L) %>% 
   ungroup() %>% 
-  group_by(type, level, res) %>% 
+  group_by(type, level, res) %>%
+  #group_by(level, res) %>%
   mutate(Temp_C = T_Dredge1_Y2-273.15, #conversion back to Celsius from Kelvin
          Date=L1_date_seq_Y2,
          source="Point Judith Pond S 1")
@@ -741,6 +760,7 @@ output_dredge2_yr2_clean <- output_dredge2_yr2 %>%
   unnest(cols = std_L) %>% 
   ungroup() %>% 
   group_by(type, level, res) %>% 
+  #group_by(level, res) %>%
   mutate(Temp_C = T_Dredge2_Y2-273.15, #conversion back to Celsius from Kelvin
          Date=L2_date_seq_Y2,
          source="Point Judith Pond S 2")
@@ -758,8 +778,11 @@ all_output_yr2 <- rbind(output_sled1_yr2_clean, output_sled2_yr2_clean, output_d
     level=="low" & res=="cross" ~ "low_cross",
     level=="high" & res=="all" ~ "high_rep",
     level=="med" & res=="all" ~ "med_rep",
-    level=="low" & res=="all" ~ "low_rep",
-  )
+    level=="low" & res=="all" ~ "low_rep")
+    # level=="top" & res=="means" ~ "top",
+    # level=="bottom" & res=="means" ~ "bottom",
+    # level=="top" & res=="cross" ~ "top_cross",
+    # level=="bottom" & res=="cross" ~ "bottom_cross")
 ) 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -824,6 +847,7 @@ output_W_yr2_clean <- output_W_yr2 %>%
   unnest(cols = std_L) %>% 
   ungroup() %>% 
   group_by(type, level, res) %>% 
+  #group_by(level, res) %>%
   mutate(Temp_C = T_W_Y2-273.15, #conversion back to Celsius from Kelvin
          Date=W_date_seq_Y2,
          source="Narragansett Bay N")
@@ -864,6 +888,7 @@ output_R1_yr2_clean <- output_R1_yr2 %>%
   unnest(cols = std_L) %>% 
   ungroup() %>% 
   group_by(type, level, res) %>% 
+  #group_by(level, res) %>%
   mutate(Temp_C = T_R1_Y2-273.15, #conversion back to Celsius from Kelvin
          Date=R1_date_seq_Y2,
          source="Narragansett Bay S 1")
@@ -898,6 +923,7 @@ output_R2_yr2_clean <- output_R2_yr2 %>%
   unnest(cols = std_L) %>% 
   ungroup() %>% 
   group_by(type, level, res) %>% 
+  #group_by(level, res) %>%
   mutate(Temp_C = T_R2_Y2-273.15, #conversion back to Celsius from Kelvin
          Date=R2_date_seq_Y2,
          source="Narragansett Bay S 2")
@@ -915,7 +941,11 @@ all_output_NB_yr2 <- rbind(output_W_yr2_clean, output_R1_yr2_clean, output_R2_yr
     level=="low" & res=="cross" ~ "low_cross",
     level=="high" & res=="all" ~ "high_rep",
     level=="med" & res=="all" ~ "med_rep",
-    level=="low" & res=="all" ~ "low_rep",
+    level=="low" & res=="all" ~ "low_rep"
+    # level=="top" & res=="means" ~ "top",
+    # level=="bottom" & res=="means" ~ "bottom",
+    # level=="top" & res=="cross" ~ "top_cross",
+    # level=="bottom" & res=="cross" ~ "bottom_cross"
   )
 ) 
 
@@ -945,41 +975,76 @@ field_data_NB_Y2 <- bind_rows(list("Narragansett Bay N" = NBN1_Y2_meandat, "Narr
 
 ### RMSE ####
 
-rmse_dat_new <- field_data %>% group_by(source) %>% left_join((all_output_yr1 %>% group_by(source))) %>% group_by(source, params, type) %>% summarise(rmse = rmse(mean_length, L_allometric))
+rmse_dat_new <- field_data %>% 
+  group_by(source) %>% 
+  left_join((all_output_yr1 %>% 
+               group_by(source))) %>%
+  group_by(source, params, type) %>% 
+  #group_by(source, params) %>% 
+  summarise(rmse = rmse(mean_length, L_allometric))
 
-rmse_NB_Y1 <- field_data_NB_Y1 %>% group_by(source) %>% left_join((all_output_NB_yr1 %>% group_by(source))) %>% group_by(source, params,type) %>% summarise(rmse = rmse(mean_length, L_allometric))
+rmse_NB_Y1 <- field_data_NB_Y1 %>% group_by(source) %>% left_join((all_output_NB_yr1 %>% group_by(source))) %>% 
+  group_by(source, params, type) %>% 
+  #group_by(source, params) %>% 
+  summarise(rmse = rmse(mean_length, L_allometric))
 
-rmse_dat_Y2 <- field_data_Y2 %>% group_by(source) %>% left_join((all_output_yr2 %>% group_by(source))) %>% group_by(source, params, type) %>% summarise(rmse = rmse(mean_length, L_allometric))
+rmse_dat_Y2 <- field_data_Y2 %>% group_by(source) %>% 
+  left_join((all_output_yr2 %>% group_by(source))) %>%
+  group_by(source, params, type) %>% 
+  #group_by(source, params) %>% 
+  summarise(rmse = rmse(mean_length, L_allometric))
 
 rmse_NB_Y2 <- field_data_NB_Y2 %>% group_by(source) %>% 
   left_join((all_output_NB_yr2 %>% group_by(source))) %>% 
-  group_by(source, params, type) %>% summarise(rmse = rmse(mean_length, L_allometric))
+  group_by(source, params, type) %>% 
+  #group_by(source, params) %>% 
+  summarise(rmse = rmse(mean_length, L_allometric))
 
 all_rmse <- bind_rows(rmse_dat_new %>% mutate(year=1), rmse_dat_Y2 %>% mutate(year=2), rmse_NB_Y1 %>% mutate(year=1), rmse_NB_Y2%>% mutate(year=2))
 
 orig_rmse <- all_rmse %>% filter(params =="orig") %>% ungroup()
 
-all_rmse <- all_rmse %>% ungroup() %>% left_join(orig_rmse %>% mutate(orig_rmse = rmse) %>% select(source, year, orig_rmse), by=c("source", "year")) %>% mutate(improvement = orig_rmse-rmse)
+all_rmse <- all_rmse %>% ungroup() %>% 
+  left_join(orig_rmse %>% mutate(orig_rmse = rmse) %>% select(source, year, orig_rmse), by=c("source", "year")) %>%
+  mutate(improvement = orig_rmse-rmse)
 
-perc_imp <- all_rmse %>% mutate(imp = if_else(improvement>0, TRUE, FALSE)) %>% group_by(params, type) %>% summarize(num_imp = sum(imp), perc_imp = sum(imp)/14, mean_imp = mean(if_else(improvement>0, improvement, 0)))
+perc_imp <- all_rmse %>% mutate(imp = if_else(improvement>0, TRUE, FALSE)) %>% 
+  filter(str_detect(source, "Bay")) %>% 
+ group_by(params, type) %>% 
+ # group_by(params) %>% 
+  summarize(num_imp = sum(imp), 
+            perc_imp = sum(imp)/length(imp), 
+            mean_imp = mean(if_else(improvement>0, improvement, 0)))
 
-pjp_plot1 <- ggplot(all_output_yr1 %>% filter(params %in% c("orig", "high_cross"), type!="stress"))+
+pjp_plot1 <- ggplot(all_output_yr1 %>% 
+                      #filter(params %in% c("orig", "high_cross"), type!="stress"))+
+                      #filter(params %in% c("orig", "high_rep"), type!="ctrl"))+
+                      filter(params %in% c("orig", "high_rep"), type!="stress"))+
   geom_smooth(aes(x=Date, y=L_allometric, color=params))+
   geom_point(data=field_data, aes(x=Date, y=mean_length))+
   facet_wrap(~source, scales = "free")
 
-pjp_plot2 <-ggplot(all_output_yr2 %>% filter(params %in% c("orig", "high_cross"), type!="stress"))+
+pjp_plot2 <-ggplot(all_output_yr2 %>% 
+                     #filter(params %in% c("orig", "high_cross"), type!="stress"))+
+                     #filter(params %in% c("orig", "high_rep"), type!="ctrl"))+
+                     filter(params %in% c("orig", "high_rep"), type!="stress"))+
   geom_smooth(aes(x=Date, y=L_allometric, color=params))+
   geom_point(data=field_data_Y2, aes(x=Date, y=mean_length))+
   facet_wrap(~source, scales = "free")
 
 
-nb_plot1 <-ggplot(all_output_NB_yr1 %>% filter(params %in% c("orig", "high_cross"), type!="stress"))+
+nb_plot1 <-ggplot(all_output_NB_yr1 %>% 
+                   ##filter(params %in% c("orig", "high_cross"), type!="stress"))+
+                    #filter(params %in% c("orig", "high_rep"), type!="ctrl"))+
+                    filter(params %in% c("orig", "high_rep"), type!="stress"))+
   geom_smooth(aes(x=Date, y=L_allometric, color=params))+
   geom_point(data=field_data_NB_Y1, aes(x=Date, y=mean_length))+
   facet_wrap(~source, scales = "free_x")
 
-nb_plot2 <- ggplot(all_output_NB_yr2 %>% filter(params %in% c("orig", "high_cross"), type!="stress"))+
+nb_plot2 <- ggplot(all_output_NB_yr2 %>% 
+                     #filter(params %in% c("orig", "high_cross"), type!="stress"))+
+                     #filter(params %in% c("orig", "high_rep"), type!="ctrl"))+
+                     filter(params %in% c("orig", "high_rep"), type!="stress"))+
   geom_smooth(aes(x=Date, y=L_allometric, color=params))+
   geom_point(data=field_data_NB_Y2, aes(x=Date, y=mean_length))+
   facet_wrap(~source, scales = "free_x")
@@ -988,17 +1053,17 @@ nb_plot2 <- ggplot(all_output_NB_yr2 %>% filter(params %in% c("orig", "high_cros
   plot_layout(guides = 'collect')
 
 
-ggplot(data=rmse_dat_new %>% ungroup() %>% filter(type!="stress"), aes(x=reorder(params, rmse), y=rmse, fill=params)) +
+ggplot(data=all_rmse %>% ungroup() %>% filter(year==2), aes(x=reorder_within(params, rmse, source), y=rmse, fill=params)) +
   geom_col()+
   geom_text(aes(label = round(rmse,1), vjust = -0.2))+
-  facet_wrap(~source)
+  facet_wrap(~source, scales="free_x")+
+  scale_x_reordered()
 
-ggplot(data=all_output_yr1, aes(x=Date, y=L_allometric, color=params)) +
-  geom_line()+
-  facet_grid(type~source)
+all_output <- bind_rows(all_output_yr1 %>% mutate(year=1), all_output_yr2 %>% mutate(year=2), all_output_NB_yr1 %>% mutate(year=1), all_output_NB_yr2 %>% mutate(year=2))
 
-ggplot(data=rmse_dat_new %>% ungroup(), aes(x=reorder_within(params, rmse,list(type,source)), y=rmse, fill=params)) +
-  geom_col()+
-  geom_text(aes(label = round(rmse,1), vjust = -0.2))+
-  scale_x_reordered()+
-  facet_wrap(type~source, scales = "free_x")
+ggplot(data=all_output %>% filter(year==1), aes(x=Date, y=L_allometric, color=params)) +
+  geom_smooth()+
+  facet_wrap(~source, scales="free")
+
+
+
