@@ -100,7 +100,7 @@ all_lit_data_half <- rbind(lit_data_plus_half, lit_data_plus_cross_half) %>%
 ggplot()+geom_point(data=all_lit_data_half, aes(x=temp, y=std_rate, color=level))+facet_wrap(~res)
 
 nls_fun_simple <- function(df, level) {
-  #level can be "high", "med", or "low"
+  #level can be "high" or "low"
   #df should be a data frame that includes the original literature values (in order to fit the lower portion of the curve), along with the new points you want to include in the nls fitting
   
   relevant_grouping <- paste("group")

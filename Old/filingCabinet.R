@@ -702,3 +702,17 @@ ggplot()+
 
 
 ##### END OLD HALVES #########
+
+new_lit %>%  left_join(new_lit20)%>% 
+  mutate(std_rate2 = round(rate/rate20,2)) %>% mutate(check=std_rate!=std_rate2) %>% pull(check) %>% sum()
+
+new_lit20 <- new_lit %>% 
+  filter(temp==20) %>% 
+  select(paper_full, rate) %>% 
+  rename(rate20=rate) 
+
+new_lit <-new_lit%>%  left_join(new_lit20)%>% 
+  mutate(std_rate2 = round(rate/rate20,2)) %>% mutate(check=std_rate==std_rate2) #%>% pull(check) %>% sum()
+
+new_lit <- new_lit %>%  left_join(new_lit20)%>% 
+  mutate(std_rate = round(rate/rate20,2))

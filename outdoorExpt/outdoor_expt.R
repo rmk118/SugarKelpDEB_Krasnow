@@ -304,7 +304,7 @@ unh_ctrl_rep <- growth_rates_no_flags %>% # start with all growth rates
   select(paper, paper_full, temp, rate, std_rgr, extra_info, temp_K, ctrl_group,stress_group)
 
 #### Literature data ####################################################################
-lit_data <- read.csv("~/Downloads/MBL_SES/arrhenius_lit_data.csv") %>% 
+lit_data <- read.csv("arrhenius_lit_data.csv") %>% 
   select(c(paper, paper_full, temp, rate, std_rate, extra_info)) %>% 
   filter(temp!=23) %>% 
   mutate(extra_info = if_else(paper!="bl182" & extra_info=="Germany", NA, extra_info),
