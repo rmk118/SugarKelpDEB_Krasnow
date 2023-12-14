@@ -21,6 +21,9 @@ library(Metrics)
 library(patchwork)
 library(furrr) #parallel processing version of purrr, to speed up model runs
 library(tidytext)
+library(scales)
+library(clipr)
+library(rstatix)
 
 #Required for model runs
 source("SolveR_R.R")
@@ -1003,65 +1006,119 @@ all_rmse <- bind_rows(rmse_dat_new %>% mutate(year=1), rmse_dat_Y2 %>% mutate(ye
 orig_rmse <- all_rmse %>% filter(params =="orig") %>% ungroup()
 
 all_rmse <- all_rmse %>% ungroup() %>% 
-  left_join(orig_rmse %>% mutate(orig_rmse = rmse) %>% select(source, year, orig_rmse), by=c("source", "year")) %>%
-  mutate(improvement = orig_rmse-rmse) %>% filter(params!="lit") %>% mutate(params=fct_drop(params))
+  left_join(orig_rmse %>% 
+              mutate(orig_rmse = rmse) %>% 
+              select(source, year, orig_rmse), by=c("source", "year")) %>%
+  mutate(improvement = orig_rmse-rmse) %>% 
+  filter(params!="lit") %>% 
+  mutate(params=fct_drop(params))
 
 perc_imp <- all_rmse %>% mutate(imp = if_else(improvement>0, TRUE, FALSE)) %>% 
-  #filter(str_detect(source, "Bay")) %>% 
- #group_by(params, type) %>% 
  group_by(params) %>% 
   summarize(num_imp = sum(imp), 
             perc_imp = sum(imp)/length(imp), 
             mean_imp = mean(if_else(improvement>0, improvement, 0)))
 
-pjp_plot1 <- ggplot(all_output_yr1)+# %>% 
-                      #filter(params %in% c("orig", "high_cross"), type!="stress"))+
-                      #filter(params %in% c("orig", "high_rep"), type!="ctrl"))+
-                     # filter(params %in% c("orig", "high_rep"), type!="stress"))+
+pjp_plot1 <- ggplot(all_output_yr1)+
+  theme_classic()+
   geom_smooth(aes(x=Date, y=L_allometric, color=params))+
   geom_point(data=field_data, aes(x=Date, y=mean_length))+
-  facet_wrap(~source, scales = "free")
+  facet_grid(~source)+
+  labs(y="Kelp length (cm)", x="", color=NULL)+
+  scale_color_manual(values=c("low"='#0f85a0',"high"="#dd4124","orig"="black"),
+                     breaks=c("low","high", "orig"),
+                     labels=c("high"="Warm", "low"="Cold" ,"orig"="Original"))+
+  scale_x_datetime(limits=as.POSIXct(c("2017-10-30 23:00:00", "2018-04-24 23:00:00")),breaks="2 months", date_labels="%b")+
+  theme(text = element_text(size=18),
+        title = element_text(size=15),
+        axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
+        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))
+  #ggtitle("Year 1 (2017-2018)")+ylim(0,285)
 
-pjp_plot2 <-ggplot(all_output_yr2)+ #%>% 
-                     #filter(params %in% c("orig", "high_cross"), type!="stress"))+
-                     #filter(params %in% c("orig", "high_rep"), type!="ctrl"))+
-                    # filter(params %in% c("orig", "high_rep"), type!="stress"))+
+pjp_plot2 <-ggplot(all_output_yr2)+
+  theme_classic()+
   geom_smooth(aes(x=Date, y=L_allometric, color=params))+
   geom_point(data=field_data_Y2, aes(x=Date, y=mean_length))+
-  facet_wrap(~source, scales = "free")
+  labs(y="Kelp length (cm)", x="", color=NULL)+
+  facet_grid(~source, scales = "free")+
+  scale_color_manual(values=c("low"='#0f85a0',"high"="#dd4124","orig"="black"),
+                     breaks=c("low","high", "orig"),
+                     labels=c("high"="Warm", "low"="Cold" ,"orig"="Original"))+
+  scale_x_datetime(limits=as.POSIXct(c("2018-11-29 12:00:00", "2019-05-30 12:00:00")),breaks="2 months", date_labels="%b")+
+ # ggtitle("Year 2 (2018-2019)")+
+  ylim(0,100)
+
+(pjp_plot1/pjp_plot2) +
+  plot_layout(guides = 'collect') &
+  theme(text = element_text(size=18),
+        title = element_text(size=15),
+        axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
+        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))
 
 
-nb_plot1 <-ggplot(all_output_NB_yr1)+# %>% 
-                   #filter(params %in% c("orig", "high_cross"), type!="stress"))+
-                    #filter(params %in% c("orig", "high_rep"), type!="ctrl"))+
-                   # filter(params %in% c("orig", "high_rep"), type!="stress"))+
+nb_plot1 <-ggplot(all_output_NB_yr1)+
   geom_smooth(aes(x=Date, y=L_allometric, color=params))+
   geom_point(data=field_data_NB_Y1, aes(x=Date, y=mean_length))+
-  facet_wrap(~source, scales = "free_x")
+  facet_wrap(~source)+
+  theme_classic()+
+  labs(y="Kelp length (cm)", x="", color=NULL)+
+  scale_color_manual(values=c("low"='#0f85a0',"high"="#dd4124","orig"="black"),
+                     breaks=c("low","high", "orig"),
+                     labels=c("high"="Warm", "low"="Cold" ,"orig"="Original"))+
+ scale_x_datetime(limits=as.POSIXct(c("2017-10-30 23:00:00", "2018-04-24 23:00:00")),breaks="2 months", date_labels="%b")+
+  ylim(0,180)
 
-nb_plot2 <- ggplot(all_output_NB_yr2)+# %>% 
-                     #filter(params %in% c("orig", "high_cross"), type!="stress"))+
-                     #filter(params %in% c("orig", "high_rep"), type!="ctrl"))+
-                    # filter(params %in% c("orig", "high_rep"), type!="stress"))+
+nb_plot2 <- ggplot(all_output_NB_yr2)+
   geom_smooth(aes(x=Date, y=L_allometric, color=params))+
+  theme_classic()+
   geom_point(data=field_data_NB_Y2, aes(x=Date, y=mean_length))+
-  facet_wrap(~source, scales = "free_x")
+  facet_wrap(~source, scales = "free_x")+
+  labs(y="Kelp length (cm)", x=NULL, color=NULL)+
+  scale_color_manual(values=c("low"='#0f85a0',"high"="#dd4124","orig"="black"),
+                     breaks=c("low","high", "orig"),
+                     labels=c("high"="Warm", "low"="Cold" ,"orig"="Original"))+
+  scale_x_datetime(limits=as.POSIXct(c("2018-11-29 12:00:00", "2019-05-30 12:00:00")),breaks="2 months", date_labels="%b")+
+ # ggtitle("Year 2 (2018-2019)")+
+  ylim(0,70)
+
+(nb_plot1/nb_plot2) +
+  plot_layout(guides = 'collect') &
+  theme(text = element_text(size=18),
+        title = element_text(size=15),
+        axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
+        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))
 
 (nb_plot1+pjp_plot1)/(nb_plot2+pjp_plot2) +
   plot_layout(guides = 'collect')
 
-
-ggplot(data=all_rmse %>% ungroup() %>% filter(year==2), aes(x=reorder_within(params, rmse, source), y=rmse, fill=params)) +
-  geom_col()+
-  geom_text(aes(label = round(rmse,1), vjust = -0.2))+
-  facet_wrap(~source, scales="free_x")+
-  scale_x_reordered()
-
 all_output <- bind_rows(all_output_yr1 %>% mutate(year=1), all_output_yr2 %>% mutate(year=2), all_output_NB_yr1 %>% mutate(year=1), all_output_NB_yr2 %>% mutate(year=2))
+
+all_output<- all_output %>% 
+  mutate(date2017=paste(sep="", month(Date), "-", day(Date), " ", hour(Date), ":00:00")) %>% mutate(date2017 = case_when(year(Date)==2017 ~ Date,
+    year(Date)==2018 & month(Date) <7 ~ Date,
+    year(Date)==2018 & month(Date) >=7 ~ as_datetime(paste(sep="", "2017-", as.character(date2017))), 
+    year(Date)==2019 ~ as_datetime(paste(sep="", "2018-", as.character(date2017)))))
 
 ggplot(data=all_output %>% filter(year==1), aes(x=Date, y=L_allometric, color=params)) +
   geom_smooth()+
   facet_wrap(~source, scales="free")
 
+ggplot(data=all_output %>% filter(str_detect(source, "Bay")), aes(x=date2017, y=L_allometric, color=params)) +
+  geom_smooth()+
+  facet_grid(year~source, scales="free")
 
+
+all_rmse %>% 
+  filter(params!="orig") %>% 
+  ungroup() %>% 
+  mutate(imp = if_else(improvement>0, TRUE, FALSE)) %>% 
+  group_by(params, year) %>% 
+  summarize(num_imp = sum(imp), 
+            perc_imp = sum(imp)/length(imp), 
+            #mean_imp = mean(if_else(improvement>0, improvement, 0))) %>% left_join(
+            med_imp = median(improvement),
+            mean_imp = mean(improvement)) %>% left_join(
+  (all_rmse %>% filter(params!="orig") %>% group_by(params, year) %>% 
+  wilcox_test(improvement ~ 0, alternative="greater") %>%
+  adjust_pvalue() %>% select(params, year, p.adj))) %>% arrange(year) %>% write_clip()
 

@@ -716,3 +716,10 @@ new_lit <-new_lit%>%  left_join(new_lit20)%>%
 
 new_lit <- new_lit %>%  left_join(new_lit20)%>% 
   mutate(std_rate = round(rate/rate20,2))
+
+
+ggplot(data=all_rmse %>% ungroup() %>% filter(year==2), aes(x=reorder_within(params, rmse, source), y=rmse, fill=params)) +
+  geom_col()+
+  geom_text(aes(label = round(rmse,1), vjust = -0.2))+
+  facet_wrap(~source, scales="free_x")+
+  scale_x_reordered()
