@@ -1022,9 +1022,10 @@ perc_imp <- all_rmse %>% mutate(imp = if_else(improvement>0, TRUE, FALSE)) %>%
 pjp_plot1 <- ggplot(all_output_yr1)+
   theme_classic()+
   geom_smooth(aes(x=Date, y=L_allometric, color=params))+
-  geom_point(data=field_data, aes(x=Date, y=mean_length))+
+  geom_point(data=field_data, aes(x=Date, y=mean_length, size="obs"))+
   facet_grid(~source)+
-  labs(y="Kelp length (cm)", x="", color=NULL)+
+  labs(y="Kelp length (cm)", x="", color=NULL, size=NULL)+
+  scale_size_manual(values=c("obs"=2), breaks=c("obs"), labels=c("obs"="Observations"))+
   scale_color_manual(values=c("low"='#0f85a0',"high"="#dd4124","orig"="black"),
                      breaks=c("low","high", "orig"),
                      labels=c("high"="Warm", "low"="Cold" ,"orig"="Original"))+
@@ -1032,20 +1033,20 @@ pjp_plot1 <- ggplot(all_output_yr1)+
   theme(text = element_text(size=18),
         title = element_text(size=15),
         axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
-        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))
-  #ggtitle("Year 1 (2017-2018)")+ylim(0,285)
+        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)),
+        legend.spacing = unit(0, "pt"))
 
 pjp_plot2 <-ggplot(all_output_yr2)+
   theme_classic()+
   geom_smooth(aes(x=Date, y=L_allometric, color=params))+
-  geom_point(data=field_data_Y2, aes(x=Date, y=mean_length))+
-  labs(y="Kelp length (cm)", x="", color=NULL)+
+  geom_point(data=field_data_Y2, aes(x=Date, y=mean_length, size="obs"))+
+  labs(y="Kelp length (cm)", x="", color=NULL, size=NULL)+
   facet_grid(~source, scales = "free")+
+  scale_size_manual(values=c("obs"=2), breaks=c("obs"), labels=c("obs"="Observations"))+
   scale_color_manual(values=c("low"='#0f85a0',"high"="#dd4124","orig"="black"),
                      breaks=c("low","high", "orig"),
                      labels=c("high"="Warm", "low"="Cold" ,"orig"="Original"))+
   scale_x_datetime(limits=as.POSIXct(c("2018-11-29 12:00:00", "2019-05-30 12:00:00")),breaks="2 months", date_labels="%b")+
- # ggtitle("Year 2 (2018-2019)")+
   ylim(0,100)
 
 (pjp_plot1/pjp_plot2) +
@@ -1057,11 +1058,12 @@ pjp_plot2 <-ggplot(all_output_yr2)+
 
 
 nb_plot1 <-ggplot(all_output_NB_yr1)+
-  geom_smooth(aes(x=Date, y=L_allometric, color=params))+
-  geom_point(data=field_data_NB_Y1, aes(x=Date, y=mean_length))+
-  facet_wrap(~source)+
   theme_classic()+
-  labs(y="Kelp length (cm)", x="", color=NULL)+
+  geom_smooth(aes(x=Date, y=L_allometric, color=params))+
+  geom_point(data=field_data_NB_Y1, aes(x=Date, y=mean_length, size="obs"))+
+  facet_wrap(~source)+
+  labs(y="Kelp length (cm)", x="", color=NULL, size=NULL)+
+  scale_size_manual(values=c("obs"=2), breaks=c("obs"), labels=c("obs"="Observations"))+
   scale_color_manual(values=c("low"='#0f85a0',"high"="#dd4124","orig"="black"),
                      breaks=c("low","high", "orig"),
                      labels=c("high"="Warm", "low"="Cold" ,"orig"="Original"))+
@@ -1069,16 +1071,16 @@ nb_plot1 <-ggplot(all_output_NB_yr1)+
   ylim(0,180)
 
 nb_plot2 <- ggplot(all_output_NB_yr2)+
-  geom_smooth(aes(x=Date, y=L_allometric, color=params))+
   theme_classic()+
-  geom_point(data=field_data_NB_Y2, aes(x=Date, y=mean_length))+
-  facet_wrap(~source, scales = "free_x")+
-  labs(y="Kelp length (cm)", x=NULL, color=NULL)+
+  geom_smooth(aes(x=Date, y=L_allometric, color=params))+
+  geom_point(data=field_data_NB_Y2, aes(x=Date, y=mean_length, size="obs"))+
+  facet_wrap(~source)+
+  labs(y="Kelp length (cm)", x=NULL, color=NULL, size=NULL)+
+  scale_size_manual(values=c("obs"=2), breaks=c("obs"), labels=c("obs"="Observations"))+
   scale_color_manual(values=c("low"='#0f85a0',"high"="#dd4124","orig"="black"),
                      breaks=c("low","high", "orig"),
                      labels=c("high"="Warm", "low"="Cold" ,"orig"="Original"))+
   scale_x_datetime(limits=as.POSIXct(c("2018-11-29 12:00:00", "2019-05-30 12:00:00")),breaks="2 months", date_labels="%b")+
- # ggtitle("Year 2 (2018-2019)")+
   ylim(0,70)
 
 (nb_plot1/nb_plot2) +
@@ -1086,7 +1088,8 @@ nb_plot2 <- ggplot(all_output_NB_yr2)+
   theme(text = element_text(size=18),
         title = element_text(size=15),
         axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
-        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))
+        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)),
+        legend.spacing = unit(0, "pt"))
 
 (nb_plot1+pjp_plot1)/(nb_plot2+pjp_plot2) +
   plot_layout(guides = 'collect')
@@ -1120,5 +1123,7 @@ all_rmse %>%
             mean_imp = mean(improvement)) %>% left_join(
   (all_rmse %>% filter(params!="orig") %>% group_by(params, year) %>% 
   wilcox_test(improvement ~ 0, alternative="greater") %>%
-  adjust_pvalue() %>% select(params, year, p.adj))) %>% arrange(year) %>% write_clip()
+  adjust_pvalue() %>% 
+    select(params, year, p.adj))) %>%
+  arrange(year) %>% write_clip()
 

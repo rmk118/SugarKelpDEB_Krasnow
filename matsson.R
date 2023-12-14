@@ -70,7 +70,9 @@ Z <- matsson_temp %>%
   full_join(data.frame(date=hourly_seq)) %>%
   arrange(date) %>% filter(date < as_datetime("2018-09-06: 00:00:00"))
 
-Z <- Z %>% mutate(across(c(temp, N, PAR), ~na.approx(.x, rule=2))) %>% na.omit() %>% mutate(PAR=PAR*3600*1e-6,.keep="unused") %>% mutate(temp_K=temp+273.15)
+Z <- Z %>% mutate(across(c(temp, N, PAR), ~na.approx(.x, rule=2))) %>% 
+  na.omit() %>% 
+  mutate(PAR=PAR*3600*1e-6,.keep="unused") %>% mutate(temp_K=temp+273.15)
 View(Z)
 
 
@@ -106,15 +108,44 @@ matsson_obs<- data.frame(Date=as_datetime(c("2018-06-08", "2018-06-28", "2018-07
 
 ggplot(data=output_matsson %>% filter(level!="lit"))+
   geom_line(aes(x=Date, y=L_allometric, color=level), linewidth=1)+
-  geom_point(data=matsson_obs, aes(x=Date, y=length), size=2)+
-  labs(x="Date", y="Kelp frond length (cm)", color=NULL, linetype=NULL)+
+  geom_point(data=matsson_obs, aes(x=Date, y=length, size="obs"))+
+  labs(x="Date", y="Kelp frond length (cm)", color=NULL, size=NULL)+
   theme_classic()+
-  scale_color_manual(values=c("low"='#0f85a0',"high"="#dd4124", "orig"="black"),
-                     breaks=c("low","high","orig"),
-                     labels=c("high"="Warm", "low"="Cold","orig"="Original"))+
-  # scale_linetype_manual(values=c("dotted","dashed","solid"),
-  #                    breaks=c("low","high","orig"),
-  #                    labels=c("high"="Warm", "low"="Cold" ,"orig"="Original"))+
+  scale_size_manual(values=c("obs"=2), breaks=c("obs"), labels=c("obs"="Observations"))+
+  scale_color_manual(values=c("low"='#0f85a0',"high"="#dd4124", "orig"="black", "Observed"="black"),
+                     breaks=c("low","high","orig", "Observed"),
+                     labels=c("high"="Warm", "low"="Cold","orig"="Original", "Observed"="Observations"))+
   theme(text = element_text(size=18),
         axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
+        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)),
+        legend.position="bottom",
+        legend.box = "horizontal")+ 
+  guides(colour = guide_legend(order = 1),
+         size = guide_legend(order = 2))
+
+PAR_plot_Norway<- ggplot(data=Z)+
+  geom_line(aes(x=date, y=PAR/3600*10^6), linewidth=1)+
+  labs(x=NULL, y=expression(paste("PAR (μmol photons ",  m^-2, " ",s^-1, ")")), color=NULL, linetype=NULL)+
+  theme_classic()+
+  theme(text = element_text(size=16),
+        axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
         axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))
+
+N_plot_Norway<-ggplot(data=Z)+
+  geom_line(aes(x=date, y=N*10^6), linewidth=1)+
+  #bquote('N concentration mol' ~NO[3]^{"-"}~ 'and' ~NO[2]^{"-"}~ 'L'^"-1")) 
+  labs(x=NULL, y=bquote("NO"[3]~" (µM)"), color=NULL, linetype=NULL)+
+  theme_classic()+
+  theme(text = element_text(size=16),
+        axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
+        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))
+
+temp_plot_Norway<-ggplot(data=Z)+
+  geom_line(aes(x=date, y=temp), linewidth=1)+
+  labs(x=NULL, y="Temperature (°C)", color=NULL, linetype=NULL)+
+  theme_classic()+
+  theme(text = element_text(size=16),
+        axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
+        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))
+
+PAR_plot_Norway+N_plot_Norway+temp_plot_Norway
