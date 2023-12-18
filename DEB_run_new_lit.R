@@ -977,48 +977,7 @@ field_data_NB_Y2 <- bind_rows(list("Narragansett Bay N" = NBN1_Y2_meandat, "Narr
 
 all_field_data <- bind_rows(list("1"=field_data, "1"=field_data_NB_Y1, "2"=field_data_Y2, "2"=field_data_NB_Y2), .id="year")
 
-### rmse ####
 
-rmse_dat_new <- field_data %>% 
-  group_by(source) %>% 
-  left_join((all_output_yr1 %>% group_by(source))) %>%
-  group_by(source, level) %>% 
-  summarise(rmse = rmse(mean_length, L_allometric))
-
-rmse_NB_Y1 <- field_data_NB_Y1 %>% group_by(source) %>% left_join((all_output_NB_yr1 %>% group_by(source))) %>% 
-  group_by(source, level) %>% 
-  summarise(rmse = rmse(mean_length, L_allometric))
-
-rmse_dat_Y2 <- field_data_Y2 %>% group_by(source) %>% 
-  left_join((all_output_yr2 %>% group_by(source))) %>%
-  group_by(source, level) %>% 
-  summarise(rmse = rmse(mean_length, L_allometric))
-
-rmse_NB_Y2 <- field_data_NB_Y2 %>% group_by(source) %>% 
-  left_join((all_output_NB_yr2 %>% group_by(source))) %>% 
-  group_by(source, level) %>% 
-  summarise(rmse = rmse(mean_length, L_allometric))
-
-all_rmse <- bind_rows(rmse_dat_new %>% mutate(year=1), 
-                      rmse_dat_Y2 %>% mutate(year=2),
-                      rmse_NB_Y1 %>% mutate(year=1),
-                      rmse_NB_Y2%>% mutate(year=2))
-
-orig_rmse <- all_rmse %>% filter(level =="orig") %>% ungroup()
-
-all_rmse <- all_rmse %>% ungroup() %>% 
-  left_join(orig_rmse %>% 
-              mutate(orig_rmse = rmse) %>% 
-              select(source, year, orig_rmse), by=c("source", "year")) %>%
-  mutate(improvement = orig_rmse-rmse) %>% 
-  filter(level!="lit") %>% 
-  mutate(level=fct_drop(level))
-
-perc_imp <- all_rmse %>% mutate(imp = if_else(improvement>0, TRUE, FALSE)) %>% 
- group_by(level) %>% 
-  summarize(num_imp = sum(imp), 
-            perc_imp = sum(imp)/length(imp), 
-            mean_imp = mean(if_else(improvement>0, improvement, 0)))
 
 pjp_plot1 <- ggplot(all_output_yr1)+
   theme_classic()+
@@ -1141,6 +1100,40 @@ ggplot() +
   theme(strip.background=element_rect(fill="white"),
         text = element_text(size=16))
 
+### RMSE full data ####
+
+rmse_dat_new <- field_data %>% 
+  group_by(source) %>% 
+  left_join((all_output_yr1 %>% group_by(source))) %>%
+  group_by(source, level) %>% 
+  summarise(rmse = rmse(mean_length, L_allometric))
+
+rmse_NB_Y1 <- field_data_NB_Y1 %>% group_by(source) %>% left_join((all_output_NB_yr1 %>% group_by(source))) %>% 
+  group_by(source, level) %>% 
+  summarise(rmse = rmse(mean_length, L_allometric))
+
+rmse_dat_Y2 <- field_data_Y2 %>% group_by(source) %>% 
+  left_join((all_output_yr2 %>% group_by(source))) %>%
+  group_by(source, level) %>% 
+  summarise(rmse = rmse(mean_length, L_allometric))
+
+rmse_NB_Y2 <- field_data_NB_Y2 %>% group_by(source) %>% 
+  left_join((all_output_NB_yr2 %>% group_by(source))) %>% 
+  group_by(source, level) %>% 
+  summarise(rmse = rmse(mean_length, L_allometric))
+
+all_rmse <- bind_rows(rmse_dat_new %>% mutate(year=1), 
+                      rmse_dat_Y2 %>% mutate(year=2),
+                      rmse_NB_Y1 %>% mutate(year=1),
+                      rmse_NB_Y2%>% mutate(year=2))
+
+orig_rmse <- all_rmse %>% filter(level =="orig") %>% ungroup()
+
+all_rmse <- all_rmse %>% ungroup() %>% 
+  left_join(orig_rmse %>% 
+              mutate(orig_rmse = rmse) %>% 
+              select(source, year, orig_rmse), by=c("source", "year")) %>%
+  mutate(improvement = orig_rmse-rmse)
 
 all_rmse %>% 
   filter(level!="orig") %>% 
@@ -1152,3 +1145,68 @@ all_rmse %>%
             med_imp = median(improvement),
             mean_imp = mean(improvement))
 
+all_rmse %>% 
+  filter(level!="orig", level!="lit") %>% 
+  ungroup() %>% 
+  mutate(imp = if_else(improvement>0, TRUE, FALSE)) %>% 
+  group_by(level, year) %>% 
+  summarize(num_imp = sum(imp), 
+            perc_imp = sum(imp)/length(imp), 
+            med_imp = median(improvement),
+            mean_imp = mean(improvement)) %>% 
+  arrange(year) %>% 
+  ungroup() 
+  #gt()%>% 
+ # fmt_percent(columns=perc_imp,decimals=1) %>% 
+  #fmt_number(columns = c("mean_imp", "med_imp"), decimals = 2) %>% 
+ # fmt(columns = level, fns=str_to_title) %>% 
+ # cols_width(everything() ~ px(80))
+
+  all_rmse %>% 
+    filter(level!="orig", level!="lit") %>% 
+    group_by(level, year) %>% 
+     wilcox_test(improvement ~ 0, alternative="greater") %>%
+     adjust_pvalue(method="bonferroni") %>% 
+     p_round() %>% 
+     p_mark_significant()
+  
+### RMSE no erosion ####
+rmse_short <- field_data %>% 
+    group_by(source) %>% 
+    left_join((all_output_yr1 %>% group_by(source))) %>%
+    group_by(source, level) %>% 
+    filter(Date<ymd("2018-04-16")) %>% 
+    summarise(rmse = rmse(mean_length, L_allometric))
+  
+rmse_NB_short <- field_data_NB_Y1 %>% 
+  group_by(source) %>% 
+  left_join((all_output_NB_yr1 %>% group_by(source))) %>% 
+  group_by(source, level) %>% 
+  filter(Date<ymd("2018-04-16")) %>% 
+  summarise(rmse = rmse(mean_length, L_allometric))
+  
+  all_rmse_short <- bind_rows(rmse_short %>% mutate(year=1), 
+                              rmse_dat_Y2 %>% mutate(year=2),
+                              rmse_NB_short %>% mutate(year=1),
+                              rmse_NB_Y2 %>% mutate(year=2))
+  
+orig_rmse_short <- all_rmse_short %>% filter(level =="orig") %>% ungroup()
+  
+all_rmse_short <- all_rmse_short %>% ungroup() %>% 
+    left_join(orig_rmse_short %>% 
+              mutate(orig_rmse = rmse) %>% 
+              select(source, year, orig_rmse), by=c("source", "year")) %>%
+    mutate(improvement = orig_rmse-rmse)
+
+all_rmse_short %>% 
+  filter(level!="orig", level!="lit") %>% 
+  ungroup() %>% 
+  mutate(imp = if_else(improvement>0, TRUE, FALSE)) %>% 
+  group_by(level, year) %>% 
+  summarize(num_imp = sum(imp), 
+            perc_imp = sum(imp)/length(imp), 
+            med_imp = median(improvement),
+            mean_imp = mean(improvement)) %>% 
+  arrange(year) %>% 
+  ungroup() 
+    

@@ -738,17 +738,27 @@ all_rmse %>%
   group_by(level, year) %>% 
   summarize(num_imp = sum(imp), 
             perc_imp = sum(imp)/length(imp), 
-            #mean_imp = mean(if_else(improvement>0, improvement, 0))) %>% left_join(
             med_imp = median(improvement),
             mean_imp = mean(improvement)) %>% left_join(
               (all_rmse %>% filter(level!="orig") %>% group_by(level, year) %>% 
                  wilcox_test(improvement ~ 0, alternative="greater") %>%
                  adjust_pvalue() %>% 
+                 p_round() %>% 
+                 p_mark_significant() %>% 
                  select(level, year, p.adj))) %>%
-  arrange(year) #%>% write_clip()
+  arrange(year) %>% 
+  ungroup() %>% 
+  group_by(year) %>% 
+  gt()  %>% 
+  fmt_percent(columns=perc_imp,decimals=1) %>% 
+  fmt_number(columns = c("mean_imp", "med_imp"), decimals = 2) %>% 
+  fmt_number(columns = c("p.adj"), decimals = 3) %>% 
+  fmt(columns = level, fns=str_to_title) %>% 
+  cols_width(everything() ~ px(80)) %>%
+  gtsave(filename="params.docx")
 
-all_rmse %>% 
-  filter(level!="orig") %>% 
+all_rmse_short %>% 
+  filter(level!="orig", level!="lit") %>% 
   ungroup() %>% 
   mutate(imp = if_else(improvement>0, TRUE, FALSE)) %>% 
   group_by(level, year) %>% 
@@ -756,26 +766,100 @@ all_rmse %>%
             perc_imp = sum(imp)/length(imp),
             med_imp = median(improvement),
             mean_imp = mean(improvement)) %>% 
-  left_join((all_rmse %>% filter(level!="orig") %>% group_by(level, year) %>% 
-               wilcox_test(improvement ~ 0))) %>%
-  #adjust_pvalue() %>% 
-  #select(level, year, p.adj))) %>%
+  left_join((all_rmse_short %>% filter(level!="orig",  level!="lit") %>% 
+               group_by(level, year) %>% 
+               wilcox_test(improvement ~ 0, alternative="greater")) %>%
+  adjust_pvalue() %>% 
+  select(level, year, p.adj)) %>%
   arrange(year)
 
 all_rmse %>% 
   select(source, year, level, rmse) %>% 
-  ungroup() %>% 
-  levene_test(rmse~level)
-
-all_rmse %>% 
-  select(source, year, level, rmse) %>% 
-  ungroup() %>% 
+  #ungroup() %>% 
   group_by(level) %>% 
   shapiro_test(rmse)
 
+
+rmse_short <- field_data %>% 
+  group_by(source) %>% 
+  left_join((all_output_yr1 %>% group_by(source))) %>%
+  group_by(source, level) %>% 
+  filter(Date<ymd("2018-04-16")) %>% 
+  summarise(rmse = rmse(mean_length, L_allometric))
+
+rmse_NB_short <- field_data_NB_Y1 %>% group_by(source) %>% left_join((all_output_NB_yr1 %>% group_by(source))) %>% 
+  group_by(source, level) %>% 
+  filter(Date<ymd("2018-04-16")) %>% 
+  summarise(rmse = rmse(mean_length, L_allometric))
+
+all_rmse_short <- bind_rows(rmse_short %>% mutate(year=1), 
+                      rmse_dat_Y2 %>% mutate(year=2),
+                      rmse_NB_short %>% mutate(year=1),
+                      rmse_NB_Y2 %>% mutate(year=2))
+
+orig_rmse_short <- all_rmse_short %>% filter(level =="orig") %>% ungroup()
+
+all_rmse_short <- all_rmse_short %>% ungroup() %>% 
+  left_join(orig_rmse_short %>% 
+              mutate(orig_rmse = rmse) %>% 
+              select(source, year, orig_rmse), by=c("source", "year")) %>%
+  mutate(improvement = orig_rmse-rmse)
+
+
 all_rmse %>% 
-  #filter(level!="orig") %>% 
-  select(source, year, level, rmse) %>% 
-  #group_by(year) %>% 
-  group_by(year) %>% 
-  kruskal_test(rmse~level)
+  filter(level!="orig", level!="lit") %>% 
+  ungroup() %>% 
+  mutate(imp = if_else(improvement>0, TRUE, FALSE)) %>% 
+  group_by(level, year) %>% 
+  summarize(num_imp = sum(imp), 
+            perc_imp = sum(imp)/length(imp),
+            med_imp = median(improvement),
+            mean_imp = mean(improvement)) %>% 
+  left_join((all_rmse %>% filter(level!="orig", level!="lit") %>% 
+              group_by(level, year) %>% 
+              wilcox_test(improvement ~ 0, alternative="greater")) %>%
+              #wilcox_test(improvement ~ 0)) %>%
+              adjust_pvalue(method="bonferroni"))
+
+
+all_rmse %>% filter(level!="orig", level!="lit") %>% 
+               group_by(level, year) %>% 
+              wilcox_test(improvement ~ 0) %>%
+              adjust_pvalue(method="bonferroni")
+
+# Kruskal-Wallis test (using all field data/model predictions) comparing RMSE between original params, warm params, and cold params - not sig.
+kruskal_test(rmse ~ level, data=all_rmse %>% filter(level!="lit") %>% group_by(year))
+
+# Kruskal-Wallis test (using truncated field data/model predictions) comparing RMSE between original params, warm params, and cold params - not sig.
+kruskal_test(rmse ~ level, data=all_rmse_short %>% filter(level!="lit") %>% group_by(year))
+
+# Kruskal-Wallis test (using all field data/model predictions), grouped by year, comparing RMSE between original params, warm params, and cold params - not sig.
+kruskal_test(improvement ~ level, data=all_rmse %>% filter(level!="lit") %>% group_by(year))
+dunn_test(improvement ~ level, data=all_rmse %>% filter(level!="lit", year==2) %>% group_by(year))
+
+# Kruskal-Wallis test (using truncated field data/model predictions), grouped by year, comparing RMSE between original params, warm params, and cold params - not sig.
+kruskal_test(improvement ~ level, data=all_rmse_short %>% filter(level!="lit") %>% group_by(year))
+dunn_test(improvement ~ level, data=all_rmse_short %>% filter(level!="lit") %>% group_by(year))
+
+# # Wilcoxon rank-sum test (using all field data/model predictions) testing both groups for a non-zero difference in RMSE compared to the original params + Bonferroni correction - not sig.
+# full_wilcox <- wilcox_test(improvement ~ 0, alternative = "greater", data=all_rmse %>% filter(level!="lit", level!="orig") %>% group_by(level))
+#  
+# # Wilcoxon rank-sum test (using truncated field data/model predictions) testing both groups for a non-zero difference in RMSE compared to the original params + Bonferroni correction - sig. for both
+# trunc_wilcox <- wilcox_test(improvement ~ 0, alternative = "greater", data=all_rmse_short %>% filter(level!="lit", level!="orig") %>% group_by(level))
+# 
+# rbind(full_wilcox, trunc_wilcox) %>% adjust_pvalue(method="bonferroni")
+ 
+# Wilcoxon rank-sum test (using all field data/model predictions) comparing improvement in RMSE over original params between cold and warm calibrations - not sig.
+full_wilcox <-wilcox_test(improvement ~ level, alternative="less", data=all_rmse %>% filter(level!="lit", level!="orig"))
+
+# Wilcoxon rank-sum test (using truncated field data/model predictions) comparing improvement in RMSE over original params between cold and warm calibrations - borderline sig.
+trunc_wilcox <- wilcox_test(improvement ~ level, alternative="less", data=all_rmse_short %>% filter(level!="lit", level!="orig"))
+
+wilcox_test(improvement ~ 0,alternative="greater", data=all_rmse %>% filter(level!="lit", level!="orig") %>% group_by(level))
+
+wilcox_test(improvement ~ 0,alternative="greater", data=all_rmse_short %>% filter(level!="lit", level!="orig") %>% group_by(level))
+
+bind_rows("full"=full_wilcox, "trunc"=trunc_wilcox, .id="data") %>% adjust_pvalue(method="bonferroni")
+
+all_rmse_short %>% filter(level!="lit", level!="orig") %>% group_by(level) %>% shapiro_test(improvement)
+ 
