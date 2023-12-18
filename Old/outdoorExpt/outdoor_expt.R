@@ -10,7 +10,7 @@ library(tseries)
 library(ggstatsplot)
 library(minpack.lm)
 
-source("./outdoorExpt/outdoorHOBO/outdoor_HOBO.R")
+source("~/Downloads/SugarKelpDEB_Krasnow/Old/outdoorExpt/outdoorHOBO/outdoor_HOBO.R")
 
 #### Nitrate data ####################################################################
 nitrate_data<- read.csv("~/Downloads/MBL_SES/outdoorExpt/nitrate.csv")

@@ -28,9 +28,7 @@ library(rstatix)
 #Required for model runs
 source("SolveR_R.R")
 source("KelpDEB_model.R")
-#source("./outdoorExpt/outdoorHOBO/outdoor_HOBO.R")
-#source("./outdoorExpt/outdoor_expt.R")
-#source("halves.R")
+source("./new_lit.R")
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ##### Minerals and Organics Section #####
@@ -361,25 +359,26 @@ output_dredge2_yr1_clean <- output_dredge2_yr1 %>%
          source="Point Judith Pond S 2")
 
 #combine all output into one dataframe
-all_output_yr1 <- rbind(output_sled1_yr1_clean, output_sled2_yr1_clean, output_dredge1_yr1_clean, output_dredge2_yr1_clean) %>% ungroup() %>% mutate(
-  params = case_when(
-    # res=="orig" ~ "orig",
-    # res=="lit" ~ "new",
-    # level=="high" & res=="means" ~ "high",
-    # level=="med" & res=="means" ~ "med",
-    # level=="low" & res=="means" ~ "low",
-    # level=="high" & res=="cross" ~ "high_cross",
-    # level=="med" & res=="cross" ~ "med_cross",
-    # level=="low" & res=="cross" ~ "low_cross",
-    # level=="high" & res=="all" ~ "high_rep",
-    # level=="med" & res=="all" ~ "med_rep",
-    # level=="low" & res=="all" ~ "low_rep"
-    level=="high"  ~ "high",
-    level=="low" ~ "low",
-    level=="orig" ~ "orig",
-    level=="lit" ~ "lit"
-  )
-) 
+all_output_yr1 <- rbind(output_sled1_yr1_clean, output_sled2_yr1_clean, output_dredge1_yr1_clean, output_dredge2_yr1_clean) %>% 
+  ungroup() #%>% 
+#   mutate(params = case_when(
+#     # res=="orig" ~ "orig",
+#     # res=="lit" ~ "new",
+#     # level=="high" & res=="means" ~ "high",
+#     # level=="med" & res=="means" ~ "med",
+#     # level=="low" & res=="means" ~ "low",
+#     # level=="high" & res=="cross" ~ "high_cross",
+#     # level=="med" & res=="cross" ~ "med_cross",
+#     # level=="low" & res=="cross" ~ "low_cross",
+#     # level=="high" & res=="all" ~ "high_rep",
+#     # level=="med" & res=="all" ~ "med_rep",
+#     # level=="low" & res=="all" ~ "low_rep"
+#     level=="high"  ~ "high",
+#     level=="low" ~ "low",
+#     level=="orig" ~ "orig",
+#     level=="lit" ~ "lit"
+#   )
+# ) 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ### Narragansett Bay Year 1 ####
 ### NB N set-up year 1 ####
@@ -768,24 +767,26 @@ output_dredge2_yr2_clean <- output_dredge2_yr2 %>%
          source="Point Judith Pond S 2")
 
 #combine all output into one data frame
-all_output_yr2 <- rbind(output_sled1_yr2_clean, output_sled2_yr2_clean, output_dredge1_yr2_clean, output_dredge2_yr2_clean) %>% ungroup() %>% mutate(
-  params = case_when(
-    # res=="orig" ~ "orig",
-    # res=="lit" ~ "new",
-    # level=="high" & res=="means" ~ "high",
-    # level=="med" & res=="means" ~ "med",
-    # level=="low" & res=="means" ~ "low",
-    # level=="high" & res=="cross" ~ "high_cross",
-    # level=="med" & res=="cross" ~ "med_cross",
-    # level=="low" & res=="cross" ~ "low_cross",
-    # level=="high" & res=="all" ~ "high_rep",
-    # level=="med" & res=="all" ~ "med_rep",
-    # level=="low" & res=="all" ~ "low_rep"
-    level=="high"  ~ "high",
-    level=="low" ~ "low",
-    level=="orig" ~ "orig",
-    level=="lit" ~ "lit"
-) )
+all_output_yr2 <- rbind(output_sled1_yr2_clean, output_sled2_yr2_clean, output_dredge1_yr2_clean, output_dredge2_yr2_clean) %>% 
+  ungroup() #%>% 
+#   mutate(
+#   params = case_when(
+#     # res=="orig" ~ "orig",
+#     # res=="lit" ~ "new",
+#     # level=="high" & res=="means" ~ "high",
+#     # level=="med" & res=="means" ~ "med",
+#     # level=="low" & res=="means" ~ "low",
+#     # level=="high" & res=="cross" ~ "high_cross",
+#     # level=="med" & res=="cross" ~ "med_cross",
+#     # level=="low" & res=="cross" ~ "low_cross",
+#     # level=="high" & res=="all" ~ "high_rep",
+#     # level=="med" & res=="all" ~ "med_rep",
+#     # level=="low" & res=="all" ~ "low_rep"
+#     level=="high"  ~ "high",
+#     level=="low" ~ "low",
+#     level=="orig" ~ "orig",
+#     level=="lit" ~ "lit"
+# ) )
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ### Narragansett Bay Year 2 ####
@@ -974,54 +975,54 @@ field_data_Y2 <- bind_rows(list("Point Judith Pond N 1" = PJN1_Y2_meandat, "Poin
 
 field_data_NB_Y2 <- bind_rows(list("Narragansett Bay N" = NBN1_Y2_meandat, "Narragansett Bay S 1" = NBS1_Y2_meandat, "Narragansett Bay S 2" =NBS2_Y2_meandat), .id="source")
 
-### RMSE ####
+all_field_data <- bind_rows(list("1"=field_data, "1"=field_data_NB_Y1, "2"=field_data_Y2, "2"=field_data_NB_Y2), .id="year")
+
+### rmse ####
 
 rmse_dat_new <- field_data %>% 
   group_by(source) %>% 
-  left_join((all_output_yr1 %>% 
-               group_by(source))) %>%
-  #group_by(source, params, type) %>% 
-  group_by(source, params) %>% 
+  left_join((all_output_yr1 %>% group_by(source))) %>%
+  group_by(source, level) %>% 
   summarise(rmse = rmse(mean_length, L_allometric))
 
 rmse_NB_Y1 <- field_data_NB_Y1 %>% group_by(source) %>% left_join((all_output_NB_yr1 %>% group_by(source))) %>% 
-  #group_by(source, params, type) %>% 
-  group_by(source, params) %>% 
+  group_by(source, level) %>% 
   summarise(rmse = rmse(mean_length, L_allometric))
 
 rmse_dat_Y2 <- field_data_Y2 %>% group_by(source) %>% 
   left_join((all_output_yr2 %>% group_by(source))) %>%
-  #group_by(source, params, type) %>% 
-  group_by(source, params) %>% 
+  group_by(source, level) %>% 
   summarise(rmse = rmse(mean_length, L_allometric))
 
 rmse_NB_Y2 <- field_data_NB_Y2 %>% group_by(source) %>% 
   left_join((all_output_NB_yr2 %>% group_by(source))) %>% 
-  #group_by(source, params, type) %>% 
-  group_by(source, params) %>% 
+  group_by(source, level) %>% 
   summarise(rmse = rmse(mean_length, L_allometric))
 
-all_rmse <- bind_rows(rmse_dat_new %>% mutate(year=1), rmse_dat_Y2 %>% mutate(year=2), rmse_NB_Y1 %>% mutate(year=1), rmse_NB_Y2%>% mutate(year=2))
+all_rmse <- bind_rows(rmse_dat_new %>% mutate(year=1), 
+                      rmse_dat_Y2 %>% mutate(year=2),
+                      rmse_NB_Y1 %>% mutate(year=1),
+                      rmse_NB_Y2%>% mutate(year=2))
 
-orig_rmse <- all_rmse %>% filter(params =="orig") %>% ungroup()
+orig_rmse <- all_rmse %>% filter(level =="orig") %>% ungroup()
 
 all_rmse <- all_rmse %>% ungroup() %>% 
   left_join(orig_rmse %>% 
               mutate(orig_rmse = rmse) %>% 
               select(source, year, orig_rmse), by=c("source", "year")) %>%
   mutate(improvement = orig_rmse-rmse) %>% 
-  filter(params!="lit") %>% 
-  mutate(params=fct_drop(params))
+  filter(level!="lit") %>% 
+  mutate(level=fct_drop(level))
 
 perc_imp <- all_rmse %>% mutate(imp = if_else(improvement>0, TRUE, FALSE)) %>% 
- group_by(params) %>% 
+ group_by(level) %>% 
   summarize(num_imp = sum(imp), 
             perc_imp = sum(imp)/length(imp), 
             mean_imp = mean(if_else(improvement>0, improvement, 0)))
 
 pjp_plot1 <- ggplot(all_output_yr1)+
   theme_classic()+
-  geom_smooth(aes(x=Date, y=L_allometric, color=params))+
+  geom_smooth(aes(x=Date, y=L_allometric, color=level))+
   geom_point(data=field_data, aes(x=Date, y=mean_length, size="obs"))+
   facet_grid(~source)+
   labs(y="Kelp length (cm)", x="", color=NULL, size=NULL)+
@@ -1038,7 +1039,7 @@ pjp_plot1 <- ggplot(all_output_yr1)+
 
 pjp_plot2 <-ggplot(all_output_yr2)+
   theme_classic()+
-  geom_smooth(aes(x=Date, y=L_allometric, color=params))+
+  geom_smooth(aes(x=Date, y=L_allometric, color=level))+
   geom_point(data=field_data_Y2, aes(x=Date, y=mean_length, size="obs"))+
   labs(y="Kelp length (cm)", x="", color=NULL, size=NULL)+
   facet_grid(~source, scales = "free")+
@@ -1059,7 +1060,7 @@ pjp_plot2 <-ggplot(all_output_yr2)+
 
 nb_plot1 <-ggplot(all_output_NB_yr1)+
   theme_classic()+
-  geom_smooth(aes(x=Date, y=L_allometric, color=params))+
+  geom_smooth(aes(x=Date, y=L_allometric, color=level))+
   geom_point(data=field_data_NB_Y1, aes(x=Date, y=mean_length, size="obs"))+
   facet_wrap(~source)+
   labs(y="Kelp length (cm)", x="", color=NULL, size=NULL)+
@@ -1072,7 +1073,7 @@ nb_plot1 <-ggplot(all_output_NB_yr1)+
 
 nb_plot2 <- ggplot(all_output_NB_yr2)+
   theme_classic()+
-  geom_smooth(aes(x=Date, y=L_allometric, color=params))+
+  geom_smooth(aes(x=Date, y=L_allometric, color=level))+
   geom_point(data=field_data_NB_Y2, aes(x=Date, y=mean_length, size="obs"))+
   facet_wrap(~source)+
   labs(y="Kelp length (cm)", x=NULL, color=NULL, size=NULL)+
@@ -1102,28 +1103,52 @@ all_output<- all_output %>%
     year(Date)==2018 & month(Date) >=7 ~ as_datetime(paste(sep="", "2017-", as.character(date2017))), 
     year(Date)==2019 ~ as_datetime(paste(sep="", "2018-", as.character(date2017)))))
 
-ggplot(data=all_output %>% filter(year==1), aes(x=Date, y=L_allometric, color=params)) +
+all_field_data<- all_field_data %>% 
+  mutate(date2017=paste(sep="", month(Date), "-", day(Date), " ", hour(Date), ":00:00")) %>% mutate(date2017 = case_when(year(Date)==2017 ~ Date,
+                                                                                                                         year(Date)==2018 & month(Date) <7 ~ Date,
+                                                                                                                         year(Date)==2018 & month(Date) >=7 ~ as_datetime(paste(sep="", "2017-", as.character(date2017))), 
+                                                                                                                         year(Date)==2019 ~ as_datetime(paste(sep="", "2018-", as.character(date2017)))))
+
+ggplot(data=all_output %>% filter(year==1), aes(x=Date, y=L_allometric, color=level)) +
   geom_smooth()+
   facet_wrap(~source, scales="free")
 
-ggplot(data=all_output %>% filter(str_detect(source, "Bay")), aes(x=date2017, y=L_allometric, color=params)) +
-  geom_smooth()+
-  facet_grid(year~source, scales="free")
+
+ggplot() +
+  theme_bw()+
+  geom_point(data=all_field_data %>% filter(str_detect(source, "Bay")), aes(x=date2017, y=mean_length,size="obs"))+
+  geom_smooth(data=all_output %>% filter(str_detect(source, "Bay"), level!="lit"), aes(x=date2017, y=L_allometric, color=level))+
+  facet_grid(year~source, labeller=labeller(year = c("1"="Year 1", "2"="Year 2")))+
+  
+  scale_size_manual(values=c("obs"=2), breaks=c("obs"), labels=c("obs"="Observations"))+
+  scale_color_manual(values=c("cold"='#0f85a0',"warm"="#dd4124", "orig"="black"),
+                     breaks=c("cold","warm","orig"),
+                     labels=c("warm"="Warm", "cold"="Cold" ,"orig"="Original"))+
+  labs(x=NULL, y="Length (cm)", color=NULL, size=NULL)+
+  theme(strip.background=element_rect(fill="white"),
+        text = element_text(size=16))
+
+ggplot() +
+  theme_bw()+
+  geom_point(data=all_field_data %>% filter(str_detect(source, "Point")), aes(x=date2017, y=mean_length,size="obs"))+
+  geom_smooth(data=all_output %>% filter(str_detect(source, "Point"), level!="lit"), aes(x=date2017, y=L_allometric, color=level))+
+  facet_grid(year~source, labeller=labeller(year = c("1"="Year 1", "2"="Year 2")))+
+  scale_size_manual(values=c("obs"=2), breaks=c("obs"), labels=c("obs"="Observations"))+
+  scale_color_manual(values=c("cold"='#0f85a0',"warm"="#dd4124", "orig"="black"),
+                     breaks=c("cold","warm","orig"),
+                     labels=c("warm"="Warm", "cold"="Cold" ,"orig"="Original"))+
+  labs(x=NULL, y="Length (cm)", color=NULL, size=NULL)+
+  theme(strip.background=element_rect(fill="white"),
+        text = element_text(size=16))
 
 
 all_rmse %>% 
-  filter(params!="orig") %>% 
+  filter(level!="orig") %>% 
   ungroup() %>% 
   mutate(imp = if_else(improvement>0, TRUE, FALSE)) %>% 
-  group_by(params, year) %>% 
+  group_by(level, year) %>% 
   summarize(num_imp = sum(imp), 
             perc_imp = sum(imp)/length(imp), 
-            #mean_imp = mean(if_else(improvement>0, improvement, 0))) %>% left_join(
             med_imp = median(improvement),
-            mean_imp = mean(improvement)) %>% left_join(
-  (all_rmse %>% filter(params!="orig") %>% group_by(params, year) %>% 
-  wilcox_test(improvement ~ 0, alternative="greater") %>%
-  adjust_pvalue() %>% 
-    select(params, year, p.adj))) %>%
-  arrange(year) %>% write_clip()
+            mean_imp = mean(improvement))
 

@@ -1,5 +1,7 @@
 #library(parameters)
-
+#library(gdata)
+#library(Metrics)
+#library(gridExtra)
 
 # Add column to data frame that identifies which group each cross is in (control temps)
 mean_growth_by_cross_ctrl <- mean_growth_by_cross_ctrl %>%
@@ -723,3 +725,57 @@ ggplot(data=all_rmse %>% ungroup() %>% filter(year==2), aes(x=reorder_within(par
   geom_text(aes(label = round(rmse,1), vjust = -0.2))+
   facet_wrap(~source, scales="free_x")+
   scale_x_reordered()
+
+
+
+
+# Sig tests ---------------------------------------------------------------
+
+all_rmse %>% 
+  filter(level!="orig") %>% 
+  ungroup() %>% 
+  mutate(imp = if_else(improvement>0, TRUE, FALSE)) %>% 
+  group_by(level, year) %>% 
+  summarize(num_imp = sum(imp), 
+            perc_imp = sum(imp)/length(imp), 
+            #mean_imp = mean(if_else(improvement>0, improvement, 0))) %>% left_join(
+            med_imp = median(improvement),
+            mean_imp = mean(improvement)) %>% left_join(
+              (all_rmse %>% filter(level!="orig") %>% group_by(level, year) %>% 
+                 wilcox_test(improvement ~ 0, alternative="greater") %>%
+                 adjust_pvalue() %>% 
+                 select(level, year, p.adj))) %>%
+  arrange(year) #%>% write_clip()
+
+all_rmse %>% 
+  filter(level!="orig") %>% 
+  ungroup() %>% 
+  mutate(imp = if_else(improvement>0, TRUE, FALSE)) %>% 
+  group_by(level, year) %>% 
+  summarize(num_imp = sum(imp), 
+            perc_imp = sum(imp)/length(imp),
+            med_imp = median(improvement),
+            mean_imp = mean(improvement)) %>% 
+  left_join((all_rmse %>% filter(level!="orig") %>% group_by(level, year) %>% 
+               wilcox_test(improvement ~ 0))) %>%
+  #adjust_pvalue() %>% 
+  #select(level, year, p.adj))) %>%
+  arrange(year)
+
+all_rmse %>% 
+  select(source, year, level, rmse) %>% 
+  ungroup() %>% 
+  levene_test(rmse~level)
+
+all_rmse %>% 
+  select(source, year, level, rmse) %>% 
+  ungroup() %>% 
+  group_by(level) %>% 
+  shapiro_test(rmse)
+
+all_rmse %>% 
+  #filter(level!="orig") %>% 
+  select(source, year, level, rmse) %>% 
+  #group_by(year) %>% 
+  group_by(year) %>% 
+  kruskal_test(rmse~level)

@@ -10,7 +10,7 @@ library(tseries)
 library(zoo)
 
 ### Import data ####
-control_files <- list.files("./outdoorExpt/outdoorHOBO/outdoor_HOBO_data/highN_control", full.names = TRUE)
+control_files <- list.files("~/Downloads/SugarKelpDEB_Krasnow/Old/outdoorExpt/outdoorHOBO/outdoor_HOBO_data/highN_control", full.names = TRUE)
 control <- suppressWarnings(read_csv(control_files,
               col_select = c("num","dateTime", "temp","lux"),
              col_types = c("d", "c", "d", "d"))) %>% 
@@ -18,7 +18,7 @@ control <- suppressWarnings(read_csv(control_files,
   mutate(datetime = parse_date_time(dateTime, c("mdy IMS p", "mdy HM")),
          trt="control",.keep="unused")
 
-lowN_files <- list.files("./outdoorExpt/outdoorHOBO/outdoor_HOBO_data/lowN_temp_stress", full.names = TRUE)
+lowN_files <- list.files("~/Downloads/SugarKelpDEB_Krasnow/Old/outdoorExpt/outdoorHOBO/outdoor_HOBO_data/lowN_temp_stress", full.names = TRUE)
 lowN<-suppressWarnings(read_csv(lowN_files,
          col_select = c("num","dateTime", "temp","lux"),
          col_types = c("d", "c", "d", "d"))) %>%
@@ -26,7 +26,7 @@ lowN<-suppressWarnings(read_csv(lowN_files,
   mutate(datetime = parse_date_time(dateTime, "mdy HM"),
          trt="lowN", .keep="unused")
 
-highN_files <- list.files("./outdoorExpt/outdoorHOBO/outdoor_HOBO_data/highN_temp_stress", full.names = TRUE)
+highN_files <- list.files("~/Downloads/SugarKelpDEB_Krasnow/Old/outdoorExpt/outdoorHOBO/outdoor_HOBO_data/highN_temp_stress", full.names = TRUE)
 highN<-suppressWarnings(read_csv(highN_files,
                                 col_select = c("num","dateTime", "temp","lux"),
                                 col_types = c("d", "c", "d", "d")))%>%
