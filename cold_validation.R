@@ -178,3 +178,6 @@ matsson_obs %>%
   group_by(level) %>% 
   summarise(rmse = rmse(length, L_allometric),
             mae=mae(length, L_allometric)) %>% write_clip()
+
+output_matsson %>% filter(time==3696)
+

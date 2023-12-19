@@ -830,12 +830,23 @@ all_rmse %>% filter(level!="orig", level!="lit") %>%
 # Kruskal-Wallis test (using all field data/model predictions) comparing RMSE between original params, warm params, and cold params - not sig.
 kruskal_test(rmse ~ level, data=all_rmse %>% filter(level!="lit") %>% group_by(year))
 
+friedman_test(rmse ~ level | id, data=all_rmse)
+
+all_rmse %>% 
+  filter(level!="orig") %>% 
+  mutate(id=paste(source, year)) %>% 
+  arrange(level, id) %>% 
+  wilcox_test(rmse ~ level, paired = TRUE, p.adjust.method = "bonferroni")
+
+dunn_test(improvement ~ level, data=all_rmse %>% filter(level!="orig"))
+
+all_rmse %>% group_by(level) %>% get_summary_stats(rmse, type="common")
 # Kruskal-Wallis test (using truncated field data/model predictions) comparing RMSE between original params, warm params, and cold params - not sig.
 kruskal_test(rmse ~ level, data=all_rmse_short %>% filter(level!="lit") %>% group_by(year))
 
 # Kruskal-Wallis test (using all field data/model predictions), grouped by year, comparing RMSE between original params, warm params, and cold params - not sig.
-kruskal_test(improvement ~ level, data=all_rmse %>% filter(level!="lit") %>% group_by(year))
-dunn_test(improvement ~ level, data=all_rmse %>% filter(level!="lit", year==2) %>% group_by(year))
+kruskal_test(improvement ~ level, data=all_rmse %>% filter(level!="orig") %>% group_by(year))
+dunn_test(improvement ~ level, data=all_rmse %>% filter(level!="orig", year==2) %>% group_by(year))
 
 # Kruskal-Wallis test (using truncated field data/model predictions), grouped by year, comparing RMSE between original params, warm params, and cold params - not sig.
 kruskal_test(improvement ~ level, data=all_rmse_short %>% filter(level!="lit") %>% group_by(year))
@@ -863,3 +874,27 @@ bind_rows("full"=full_wilcox, "trunc"=trunc_wilcox, .id="data") %>% adjust_pvalu
 
 all_rmse_short %>% filter(level!="lit", level!="orig") %>% group_by(level) %>% shapiro_test(improvement)
  
+
+y <- matrix(c(
+  3.88, 5.64, 5.76, 4.25, 5.91, 4.33, 30.58, 30.14, 16.92,
+  23.19, 26.74, 10.91, 25.24, 33.52, 25.45, 18.85, 20.45,
+  26.67, 4.44, 7.94, 4.04, 4.4, 4.23, 4.36, 29.41, 30.72,
+  32.92, 28.23, 23.35, 12, 38.87, 33.12, 39.15, 28.06, 38.23,
+  26.65),nrow=6, ncol=6,
+  dimnames=list(1:6, LETTERS[1:6]))
+print(y)
+friedmanTest(y)
+friedmanTest(all_rmse %>% select(id, rmse, level), groups=level, blocks=id)
+
+friedman.test(rmse ~ level|id, data=all_rmse %>% select(id, rmse, level) %>% ungroup())
+
+friedman.test(rmse ~ level|id, data=all_rmse %>% select(id, rmse, level) %>% ungroup())
+
+rmse_matrix <- all_rmse %>% 
+  select(id, rmse, level) %>% ungroup() %>% 
+  pivot_wider(names_from = level, values_from = rmse) %>%
+  column_to_rownames(var="id") %>% 
+  as.matrix() 
+
+friedman.test(rmse_matrix)
+frdAllPairsNemenyiTest(rmse_matrix, p.adjust = "bonferroni")

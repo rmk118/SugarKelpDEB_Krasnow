@@ -1133,7 +1133,8 @@ all_rmse <- all_rmse %>% ungroup() %>%
   left_join(orig_rmse %>% 
               mutate(orig_rmse = rmse) %>% 
               select(source, year, orig_rmse), by=c("source", "year")) %>%
-  mutate(improvement = orig_rmse-rmse)
+  mutate(improvement = orig_rmse-rmse) %>% 
+  mutate(id=paste(source, year))
 
 all_rmse %>% 
   filter(level!="orig") %>% 
