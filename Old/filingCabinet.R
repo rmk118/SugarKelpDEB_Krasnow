@@ -859,12 +859,7 @@ dunn_test(improvement ~ level, data=all_rmse_short %>% filter(level!="lit") %>% 
 # trunc_wilcox <- wilcox_test(improvement ~ 0, alternative = "greater", data=all_rmse_short %>% filter(level!="lit", level!="orig") %>% group_by(level))
 # 
 # rbind(full_wilcox, trunc_wilcox) %>% adjust_pvalue(method="bonferroni")
- 
-# Wilcoxon rank-sum test (using all field data/model predictions) comparing improvement in RMSE over original params between cold and warm calibrations - not sig.
-full_wilcox <-wilcox_test(improvement ~ level, alternative="less", data=all_rmse %>% filter(level!="lit", level!="orig"))
 
-# Wilcoxon rank-sum test (using truncated field data/model predictions) comparing improvement in RMSE over original params between cold and warm calibrations - borderline sig.
-trunc_wilcox <- wilcox_test(improvement ~ level, alternative="less", data=all_rmse_short %>% filter(level!="lit", level!="orig"))
 
 wilcox_test(improvement ~ 0,alternative="greater", data=all_rmse %>% filter(level!="lit", level!="orig") %>% group_by(level))
 
@@ -873,28 +868,28 @@ wilcox_test(improvement ~ 0,alternative="greater", data=all_rmse_short %>% filte
 bind_rows("full"=full_wilcox, "trunc"=trunc_wilcox, .id="data") %>% adjust_pvalue(method="bonferroni")
 
 all_rmse_short %>% filter(level!="lit", level!="orig") %>% group_by(level) %>% shapiro_test(improvement)
- 
-
-y <- matrix(c(
-  3.88, 5.64, 5.76, 4.25, 5.91, 4.33, 30.58, 30.14, 16.92,
-  23.19, 26.74, 10.91, 25.24, 33.52, 25.45, 18.85, 20.45,
-  26.67, 4.44, 7.94, 4.04, 4.4, 4.23, 4.36, 29.41, 30.72,
-  32.92, 28.23, 23.35, 12, 38.87, 33.12, 39.15, 28.06, 38.23,
-  26.65),nrow=6, ncol=6,
-  dimnames=list(1:6, LETTERS[1:6]))
-print(y)
-friedmanTest(y)
-friedmanTest(all_rmse %>% select(id, rmse, level), groups=level, blocks=id)
 
 friedman.test(rmse ~ level|id, data=all_rmse %>% select(id, rmse, level) %>% ungroup())
-
 friedman.test(rmse ~ level|id, data=all_rmse %>% select(id, rmse, level) %>% ungroup())
 
-rmse_matrix <- all_rmse %>% 
-  select(id, rmse, level) %>% ungroup() %>% 
-  pivot_wider(names_from = level, values_from = rmse) %>%
-  column_to_rownames(var="id") %>% 
-  as.matrix() 
+nemenyi <- frdAllPairsNemenyiTest(rmse_matrix, p.adjust = "bonferroni")
 
-friedman.test(rmse_matrix)
-frdAllPairsNemenyiTest(rmse_matrix, p.adjust = "bonferroni")
+nemenyi$p.value %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var="level") %>% 
+  gt() %>% 
+  tab_footnote(
+    footnote = "*p<0.05; **p<0.01; ***p<0.001"
+   # locations = cells_column_labels(columns = sza)
+  )
+
+View(all_rmse %>% filter(level!="orig") %>% mutate(across(where(is.double), ~round(.x, digits=2))) %>% select(-id) %>% arrange(source, year) %>% mutate(level = str_to_title(level)))
+
+all_rmse_short %>% filter(level!="orig", year==1) %>% mutate(across(where(is.double), ~round(.x, digits=2))) %>% arrange(source, year) %>% mutate(level = str_to_title(level)) %>% write_clip()
+
+
+# Wilcoxon rank-sum test (using all field data/model predictions) comparing improvement in RMSE over original params between cold and warm calibrations - not sig.
+wilcox_test(improvement ~ level, alternative="less", data=all_rmse %>% filter(level!="lit", level!="orig"))
+
+# Wilcoxon rank-sum test (using truncated field data/model predictions) comparing improvement in RMSE over original params between cold and warm calibrations - sig.
+wilcox_test(improvement ~ level, alternative="less", data=all_rmse_short %>% filter(level!="lit", level!="orig"))  

@@ -3,7 +3,7 @@
 # available at https://doi.org/10.1016/j.ecolmodel.2020.109151
 
 # This code was written by Ruby Krasnow between November-December 2023
-# Last updated: Dec 17, 2023
+# Last updated: Dec 30, 2023
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Import libraries
@@ -13,6 +13,7 @@ library(lubridate)
 library(tseries)
 library(minpack.lm)
 library(deSolve)
+library(zoo)
 
 #Required for model runs
 source("SolveR_R.R")
@@ -49,15 +50,19 @@ w_O2 <- 32 #g/mol
 ##### End Minerals and Organics Section - all following code written by Ruby Krasnow ##
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-### Time steps #####
+
+# MATSSON 2012 ------------------------------------------------------------
+
+
+###### Time steps ######
 # Kelp was outplanted April 4 and harvested September 5 (growth period of 155 days)
 hourly_seq <- seq(ymd_hms("2018-04-04 00:00:00"),ymd_hms("2018-09-05 00:00:00"), by="hour") # hourly sequence of POSIXct values
 times_Matsson <- seq(0, 154*24, 1) #155 days stepped hourly
 
-### Setting up environmental forcing data #####
-matsson_temp_df <- read_csv("matsson_temp.csv", col_names=c("date", "temp"), col_types = "Dd") #from Matsson et al., 2012 in J. Appl. Phyc.
-matsson_N_df <- read_csv("matssonN.csv", col_names=c("date", "N"), col_types = "Dd") #from Matsson et al., 2012
-matsson_PAR_df <- read_csv("matsson_PAR.csv", col_names=c("date", "PAR"), col_types = "Dd") #from Matsson et al., 2012
+###### Environmental forcing data #####
+matsson_temp_df <- read_csv("./validation_data/matsson2021/matsson_temp.csv", col_names=c("date", "temp"), col_types = "Dd") #from Matsson et al., 2012 in J. Appl. Phyc.
+matsson_N_df <- read_csv("./validation_data/matsson2021/matssonN.csv", col_names=c("date", "N"), col_types = "Dd") #from Matsson et al., 2012
+matsson_PAR_df <- read_csv("./validation_data/matsson2021/matsson_PAR.csv", col_names=c("date", "PAR"), col_types = "Dd") #from Matsson et al., 2012
 
 #From Jones et al., 2019 (Monitoring ocean acidification in Norwegian seas in 2018)
 CO_2 <- 2261/10^6 #convert from M to µM
@@ -94,23 +99,20 @@ T_field <- approxfun(x = seq(from = 0, to = 154*24, by = 1), y = env_data$temp_K
 # Nitrate forcing function
 N_field <- approxfun(x = seq(from = 0, to = 154*24, by = 1), y = env_data$N, method = "linear", rule = 2) 
 
-
-
-### Initial conditions #####
+###### Initial conditions #####
 state_Lo <- c(m_EC = 0.002, #Reserve density of C reserve (initial mass of C reserve per initial mass of structure)
               m_EN = 0.01,  #Reserve density of N reserve (initial mass of N reserve per initial mass of structure)
               M_V = 0.05/(w_V+0.01*w_EN+0.002*w_EC)) #molM_V #initial mass of structure
 W <- 0.05 #initial biomass for conversions
 
-
-### Model runs #####
+###### Model runs #####
 output_matsson <- params_nested %>% 
   mutate(std_L = future_map(data, function(df) {
   temp_params <- params_Lo
   temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
   
   ode_output <- ode(y = state_Lo, t = times_Matsson, func = rates_Lo, parms = temp_params)
-   ode_output <- as.data.frame(ode_output) %>% select(time, W, L_allometric) #convert deSolve output into data frame and keep most relevant columns
+   ode_output <- as.data.frame(ode_output) #%>% select(time, W, L_allometric) #convert deSolve output into data frame and keep most relevant columns
    ode_output
 }))
   
@@ -125,10 +127,11 @@ output_matsson <- output_matsson %>%
          area=0.289*(L_allometric*width)^1.15, #allometric relationship used by Matsson et al.
          .before=1) #putting new columns at the beginning for readability
 
-### Import observed data #####
+###### Import observed data #####
 matsson_obs <- data.frame(date=as_datetime(c("2018-06-08", "2018-06-28", "2018-07-17", "2018-08-01", "2018-08-13", "2018-09-05")),length=c(42,50,66,73,83,87.5))
 
-### Growth figure #####
+###### Figures #####
+# Growth figure
 ggplot(data=output_matsson %>% filter(level!="lit"))+
   geom_line(aes(x=date, y=L_allometric, color=level), linewidth=1)+
   geom_point(data=matsson_obs, aes(x=date, y=length, size="obs"))+
@@ -141,12 +144,10 @@ ggplot(data=output_matsson %>% filter(level!="lit"))+
   theme(text = element_text(size=18),
         axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
         axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))+
-        #legend.position="bottom",
-        #legend.box = "horizontal")+ 
   guides(colour = guide_legend(order = 1),
          size = guide_legend(order = 2))
 
-### Environmental figures #####
+### Environmental figures
 PAR_plot_Norway<- ggplot(data=env_data)+
   geom_line(aes(x=date, y=PAR/3600*10^6), linewidth=1)+
   labs(x=NULL, y=expression(paste("PAR (μmol photons ",  m^-2, " ",s^-1, ")")), color=NULL, linetype=NULL)+
@@ -177,7 +178,113 @@ matsson_obs %>%
   left_join(output_matsson) %>% 
   group_by(level) %>% 
   summarise(rmse = rmse(length, L_allometric),
-            mae=mae(length, L_allometric)) %>% write_clip()
+            mae=mae(length, L_allometric)) #%>% write_clip()
 
-output_matsson %>% filter(time==3696)
+output_matsson %>% filter(time==3696) %>% select(date, L_allometric, level)
 
+
+# JEVNE 2020 --------------------------------------------------------------
+
+###### Time steps ######
+# Experimental period was June 1-19th, 2014 (growth period of 20 days)
+# this followed a 4-week acclimation period.
+hourly_seq_jevne <- seq(ymd_hms("2014-06-01 00:00:00"),ymd_hms("2014-06-20 00:00:00"), by="hour") # hourly sequence of POSIXct values
+times_jevne <- seq(0, 19*24, 1) #20 days stepped hourly
+
+###### Environmental forcing data #####
+
+N_files <- c(D1_N="D1_N", D4_N="D4_N", S1="S1_N", S4_N="S4_N")
+N_filepaths <- N_files %>% map_chr(\(x) paste0("./validation_data/jevne2020/", x, ".csv"))
+
+jevne_N <- read_csv(N_filepaths, id = "trt", col_names = c("date", "N"), col_types = "cd") %>% 
+  mutate(date = ymd_hms(paste0(date, ":00")))  %>%
+  mutate(trt = tools::file_path_sans_ext(basename(trt)),
+         trt = as_factor(str_sub(trt,1,2)),
+        date = round_date(date, unit="day"),
+        N = N/14/10^6) #N is imported in µg/L, we want mol/L
+
+PAR_files <- c(D1_PAR="D1_PAR", D4_PAR="D4_PAR", S1_PAR="S1_PAR", S4_PAR="S4_PAR")
+PAR_filepaths <- PAR_files %>% map_chr(\(x) paste0("./validation_data/jevne2020/", x, ".csv"))
+
+jevne_PAR <- read_csv(PAR_filepaths, id = "trt", col_names = c("date", "PAR"), col_types = "cd") %>% 
+  mutate(date = ymd_hms(paste0(date, ":00")))  %>%
+  mutate(trt = tools::file_path_sans_ext(basename(trt)),
+         trt = as_factor(str_sub(trt,1,2)),
+         date = round_date(date, unit="day"))
+
+temp_files <- c(D1_temp="D1_temp", D4_temp="D4_temp", S1_temp="S1_temp", S4_temp="S4_temp")
+temp_filepaths <- temp_files %>% map_chr(\(x) paste0("./validation_data/jevne2020/", x, ".csv"))
+
+jevne_temp <- read_csv(temp_filepaths, id = "trt", col_names = c("date", "temp"), col_types = "cd") %>% 
+  mutate(date = ymd_hms(paste0(date, ":00")))   %>%
+  mutate(trt = tools::file_path_sans_ext(basename(trt)),
+         trt = as_factor(str_sub(trt,1,2)),
+         date = round_date(date, unit="day"))
+
+jevne_N<- jevne_N %>% arrange(date) %>% group_by(trt, date) %>% summarise(N = mean(N))
+jevne_temp<- jevne_temp %>% arrange(date) %>% group_by(trt, date) %>% summarise(temp = mean(temp))
+jevne_PAR <- jevne_PAR %>% arrange(date) %>% group_by(trt, date) %>% summarise(PAR = mean(PAR))
+
+env_data_jevne <- jevne_temp %>% ungroup() %>% 
+  full_join(jevne_N %>% ungroup()) %>% 
+  full_join(jevne_PAR %>% ungroup()) %>% 
+  full_join(data.frame(date=hourly_seq_jevne)) %>%
+  arrange(date) %>% 
+  complete(date, trt) %>% 
+  filter(date < as_datetime("2014-06-20: 01:00:00") & date > as_datetime("2014-05-21: 00:00:00")) %>% 
+  arrange(date) %>% 
+  filter(!is.na(trt))
+  
+env_data_jevne <- env_data_jevne %>%
+  group_by(trt) %>% 
+  mutate(across(c(temp, N, PAR), ~na.approx(.x, rule=2))) %>% 
+  mutate(temp_K=temp+273.15) %>% 
+  filter(date > as_datetime("2014-05-31: 23:00:00"))
+
+###### Initial conditions #####
+# The kelp started the acclimation period with an avg length of 45.8 ± 2.4 cm
+# Assuming they grew to be about as large as 1 SD above the mean at the beginning of the acclimation period would give a mean around 48.5
+View(output_matsson %>% filter(L_allometric < 49 & L_allometric > 48) %>% select(m_EC, m_EN, M_V, W, L_allometric, level))
+#when length is around 48.5 cm, m_EC around 0.313, m_EN = 0.000918, M_V=0.0295, W=1.16
+state_jevne <- c(m_EC = 0.313, #Reserve density of C reserve (initial mass of C reserve per initial mass of structure)
+              m_EN = 0.000918,  #Reserve density of N reserve (initial mass of N reserve per initial mass of structure)
+              M_V = 1.16/(w_V+0.000918*w_EN+0.313*w_EC)) #molM_V #initial mass of structure
+W <- 1.16 #initial biomass for conversions
+
+###### Import observed data #####
+jevne_growth <- read_delim("./validation_data/jevne2020/jevne2020growthN.CSV", delim=";", show_col_types = FALSE) %>% select(Sampleday, Treatment, Replicate, Growth_mean)
+
+jevne_growth <- jevne_growth %>% mutate(date = dmy(Sampleday),
+                        trt = as.factor(Treatment),
+                        rep = as.factor(Replicate),
+                        growth = as.double(str_replace(Growth_mean,",", ".")), .keep="unused")
+
+###### Figures ####
+
+### Environmental figures
+PAR_plot_jevne<- ggplot(data=env_data_jevne)+
+  geom_line(aes(x=date, y=PAR, color=trt), linewidth=1)+
+  labs(x=NULL, y=expression(paste("PAR (μmol photons ",  m^-2, " ",s^-1, ")")), color=NULL, linetype=NULL)+
+  theme_classic()+
+  theme(text = element_text(size=16),
+        axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
+        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))
+
+N_plot_jevne<-ggplot(data=env_data_jevne)+
+  geom_line(aes(x=date, y=N*10^6, color=trt), linewidth=1)+
+  labs(x=NULL, y=bquote("NO"[3]~" (µM)"), color=NULL, linetype=NULL)+
+  theme_classic()+
+  theme(text = element_text(size=16),
+        axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
+        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))
+
+temp_plot_jevne<-ggplot(data=env_data_jevne)+
+  geom_line(aes(x=date, y=temp, color=trt), linewidth=1)+
+  labs(x=NULL, y="Temperature (°C)", color=NULL, linetype=NULL)+
+  theme_classic()+
+  theme(text = element_text(size=16),
+        axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
+        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))
+
+PAR_plot_jevne+N_plot_jevne+temp_plot_jevne+
+  plot_layout(guides = 'collect')

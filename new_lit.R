@@ -3,7 +3,7 @@
 # available at https://doi.org/10.1016/j.ecolmodel.2020.109151
 
 # This code was written by Ruby Krasnow between November-December 2023
-# Last updated: Dec 17, 2023
+# Last updated: Dec 30, 2023
 
 #Packages needed
 library(tidyverse)
@@ -15,7 +15,7 @@ library(gt)
 
 #### Original literature data (cited in Venolia et al., 2020) ###############################################################
 
-lit_data <- read.csv("arrhenius_lit_data.csv") %>% 
+lit_data <- read.csv("orig_lit_data.csv") %>% 
   select(c(paper, paper_full, temp, rate, std_rate, extra_info)) %>% 
   filter(temp!=23) %>% 
   mutate(extra_info = if_else(paper!="bl182" & extra_info=="Germany", NA, extra_info),
@@ -189,6 +189,7 @@ gt(params_new_lit %>% mutate(T_H=T_H-273.15)) %>%
              T_H = html("T<sub>H</sub> (°C)"),
              T_AH = html("T<sub>AH</sub> (K)"),
              level="") %>% 
-  cols_width(everything() ~ px(80)) %>%
-  gtsave(filename="params.docx")
+  cols_width(everything() ~ px(80)) 
+#%>%
+  #gtsave(filename="params.docx")
 

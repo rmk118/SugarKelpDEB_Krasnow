@@ -24,6 +24,7 @@ library(tidytext)
 library(scales)
 library(clipr)
 library(rstatix)
+library(PMCMRplus)
 
 #Required for model runs
 source("SolveR_R.R")
@@ -150,7 +151,7 @@ R1_date_seq_Y1 <- seq(as_datetime("2017-11-1 12:00:00"), as_datetime("2018-04-21
 R2_date_seq_Y1 <-seq(as_datetime("2017-12-6 12:00:00"), as_datetime("2018-04-21 12:00:00"), by="hour")
 
 #### Irradiance set-up year 1 ####
-NOAA_Irradiance <- read.csv("NOAASurfaceIrradiance.csv", header = TRUE, fileEncoding="UTF-8-BOM")
+NOAA_Irradiance <- read.csv("./validation_data/venolia2020/NOAASurfaceIrradiance.csv", header = TRUE, fileEncoding="UTF-8-BOM")
 NOAA_Irradiance$DateTime <- dmy_hms(NOAA_Irradiance$DateTime, tz = "UTC") #NOAA data in UTC (5 hours ahead)
 NOAA_Irradiance <- with_tz(NOAA_Irradiance, "America/New_York") #Convert from UTC to EST
 NOAA_Irradiance$DownMinusUp <- NOAA_Irradiance$dswrf-NOAA_Irradiance$uswrf #net shortwave radiation at the surface (W/m^2) is obtained by subtracting the upward short wave flux (uswrf) from the downward flux (dswrf)
@@ -164,7 +165,7 @@ NOAA_Irradiance$DownMinusUp <- NOAA_Irradiance$dswrf-NOAA_Irradiance$uswrf #net 
 NOAA_Irradiance$PAR <- NOAA_Irradiance$DownMinusUp*0.43*4.56*exp(-0.46*1)*3600*1e-6
 
 ##### PJP N set-up year 1 ####
-WSA2_Y1 <- read.csv("WaterSampleAnalysis2Y1.csv", header = TRUE, fileEncoding="UTF-8-BOM") #Import water Q data
+WSA2_Y1 <- read.csv("./validation_data/venolia2020/WaterSampleAnalysis2Y1.csv", header = TRUE, fileEncoding="UTF-8-BOM") #Import water Q data
 WSA2_Y1$Date <- mdy(WSA2_Y1$Date) #convert dates
 names(WSA2_Y1)[1] <- "Site" #only necessary for some computers running this code
 
@@ -180,17 +181,17 @@ N_dredge <- Dredge_WSA[c("Date","NitrateNitrite_uM")] #new dataframe with the re
 N_dredge$NitrateNitrite_uM <- N_dredge$NitrateNitrite_uM/1000000 #convert from micromoles/L to moles/L
 
 ##### PJP DIC set-up year 1###########
-DIC <- read.csv("Ninigret_EPA_DIC.csv", header = TRUE, fileEncoding="UTF-8-BOM") #Import Ninigret DIC data
+DIC <- read.csv("./validation_data/venolia2020/Ninigret_EPA_DIC.csv", header = TRUE, fileEncoding="UTF-8-BOM") #Import Ninigret DIC data
 CO_2 <- mean(DIC$DIC.uMkg.mean) #micromole DIC/kg (Jason said it was okay to assume that 1kg of seawater is 1L of seawater (actual conversion requires density calc from salinity and T))
 #need units to match K_C (molDIC/L)
 CO_2 <- CO_2/1000000
 
 ##### PJP temp set-up year 1 ###########
-Sled_Y1_hobotemp_orig <- read.csv("Sled_Y1_TempLogger2.csv", header = TRUE, fileEncoding="UTF-8-BOM") #import
+Sled_Y1_hobotemp_orig <- read.csv("./validation_data/venolia2020/Sled_Y1_TempLogger2.csv", header = TRUE, fileEncoding="UTF-8-BOM") #import
 Sled_Y1_hobotemp_orig$DateTime <- mdy_hms(Sled_Y1_hobotemp_orig$Date_Time) #convert time field
 Sled_Y1_hobotemp_orig$Temp_K <- Sled_Y1_hobotemp_orig$Temp_C+273.15 #create column with temp in K
 
-Dredge_Y1_hobo_orig <- read.csv("Dredge_Y1_hobo.csv", header = TRUE, fileEncoding="UTF-8-BOM") #importing neighboring temp file to replace corrupted section
+Dredge_Y1_hobo_orig <- read.csv("./validation_data/venolia2020/Dredge_Y1_hobo.csv", header = TRUE, fileEncoding="UTF-8-BOM") #importing neighboring temp file to replace corrupted section
 Dredge_Y1_hobo_orig$DateTime <- mdy_hms(Dredge_Y1_hobo_orig$Date_Time) #convert time field
 Dredge_Y1_hobo_orig$Temp_K <- Dredge_Y1_hobo_orig$Temp_C+273.15 #create column with temp in K
 
@@ -384,7 +385,7 @@ all_output_yr1 <- rbind(output_sled1_yr1_clean, output_sled2_yr1_clean, output_d
 ### NB N set-up year 1 ####
 
 #Wickford
-WSA2_Y1 <- read.csv("WaterSampleAnalysis2Y1.csv", header = TRUE, fileEncoding="UTF-8-BOM") #Import water quality data
+WSA2_Y1 <- read.csv("./validation_data/venolia2020/WaterSampleAnalysis2Y1.csv", header = TRUE, fileEncoding="UTF-8-BOM") #Import water quality data
 WSA2_Y1$Date <- mdy(WSA2_Y1$Date) #convert dates
 names(WSA2_Y1)[1] <- "Site" #only necessary to run this code on some computers
 Wickford_WSA <- filter(WSA2_Y1, Site == "Wickford") #filter by site
@@ -393,7 +394,7 @@ Wickford_WSA <- filter(WSA2_Y1, Site == "Wickford") #filter by site
 RomePt_WSA <- filter(WSA2_Y1, Site == "Rome Point") #filter by site
 
 ### NB DIC set-up year 1 ###########
-Segarra2002Carbon <- read.csv("BrentonPoint_Segarra2002CarbonData.csv", header = TRUE, fileEncoding="UTF-8-BOM") #Import lit TCO2 data
+Segarra2002Carbon <- read.csv("./validation_data/venolia2020/BrentonPoint_Segarra2002CarbonData.csv", header = TRUE, fileEncoding="UTF-8-BOM") #Import lit TCO2 data
 names(Segarra2002Carbon)[1] <- "Date" #Only necessary for running the code on some computer
 Segarra2002Carbon$Date <- mdy(Segarra2002Carbon$Date) #time field conversion
 CO_2 <- mean(Segarra2002Carbon$TCO2_micromolPERkg)/1000000 #(mol CO2/L)
@@ -402,12 +403,12 @@ CO_2 <- mean(Segarra2002Carbon$TCO2_micromolPERkg)/1000000 #(mol CO2/L)
 
 ### NB temp set-up year 1 #############
 # NB N (Wickford)
-Wickford_Y1_hobo_orig <- read.csv("Wickford_Y1_hobo.csv", header = TRUE, fileEncoding="UTF-8-BOM") #Import Wickford Hobo data
+Wickford_Y1_hobo_orig <- read.csv("./validation_data/venolia2020/Wickford_Y1_hobo.csv", header = TRUE, fileEncoding="UTF-8-BOM") #Import Wickford Hobo data
 Wickford_Y1_hobo_orig$DateTime <- mdy_hms(Wickford_Y1_hobo_orig$DateTime) #convert time field
 Wickford_Y1_hobo_orig$Temp_K <- Wickford_Y1_hobo_orig$Temp_C+273.15 #create column with temp in K
 
 # NB S (Rome)
-RomePoint_Y1_hobotemp_orig <- read.csv("RomePoint_Y1_hobotemp.csv", header = TRUE, fileEncoding="UTF-8-BOM") #import
+RomePoint_Y1_hobotemp_orig <- read.csv("./validation_data/venolia2020/RomePoint_Y1_hobotemp.csv", header = TRUE, fileEncoding="UTF-8-BOM") #import
 RomePoint_Y1_hobotemp_orig$DateTime <- mdy_hms(RomePoint_Y1_hobotemp_orig$DateTime) #convert time field
 RomePoint_Y1_hobotemp_orig$Temp_K <- RomePoint_Y1_hobotemp_orig$Temp_C+273.15 #create column with temp in K
 
@@ -541,7 +542,7 @@ all_output_NB_yr1 <- rbind(output_W_yr1_clean, output_R1_yr1_clean, output_R2_yr
 
 
 ### Import field data ####
-KelpY1 <- read.csv("Year1kelpdata.csv", header = TRUE, fileEncoding="UTF-8-BOM")
+KelpY1 <- read.csv("./validation_data/venolia2020/Year1kelpdata.csv", header = TRUE, fileEncoding="UTF-8-BOM")
 names(KelpY1)[2] <- "Site"
 KelpY1 <- filter(KelpY1, Site != "Fox Island")
 KelpY1$Date <- mdy(KelpY1$SamplingDate)
@@ -600,7 +601,7 @@ R1_date_seq_Y2 <- seq(as_datetime("2018-12-20 12:00:00"), as_datetime("2019-05-2
 R2_date_seq_Y2 <-seq(as_datetime("2019-2-21 12:00:00"), as_datetime("2019-05-24 12:00:00"), by="hour")
 
 #### PJP N set-up year 2 ####
-WSA_Y2 <- read.csv("WaterSamplesY2.csv", header = TRUE, fileEncoding="UTF-8-BOM") #Import water Q data
+WSA_Y2 <- read.csv("./validation_data/venolia2020/WaterSamplesY2.csv", header = TRUE, fileEncoding="UTF-8-BOM") #Import water Q data
 WSA_Y2$Date <- mdy(WSA_Y2$Date) #convert dates
 names(WSA_Y2)[1] <- "Site" #only necessary for some computers running this code
 
@@ -611,7 +612,7 @@ Sled_WSA2$NO3NO2_µM <- Sled_WSA2$NO3NO2_µM/1000000 #convert from micromoles/L 
 Dredge_WSA2$NO3NO2_µM <- Dredge_WSA2$NO3NO2_µM/1000000
 
 #### PJP DIC set-up year 2 ###########
-DIC <- read.csv("Ninigret_EPA_DIC.csv", header = TRUE, fileEncoding="UTF-8-BOM") #Import Ninigret DIC data
+DIC <- read.csv("./validation_data/venolia2020/Ninigret_EPA_DIC.csv", header = TRUE, fileEncoding="UTF-8-BOM") #Import Ninigret DIC data
 CO_2 <- mean(DIC$DIC.uMkg.mean) #micromole DIC/kg (Jason said it was okay to assume that 1kg of seawater is 1L of seawater (actual conversion requires density calc from salinity and T))
 #need units to match K_C (molDIC/L)
 CO_2 <- CO_2/1000000
@@ -620,13 +621,13 @@ CO_2 <- CO_2/1000000
 
 #### PJP temp set-up year 2 #############
 # Point Judith Pond N (sled)
-Sled_Y2_Hobo_orig <- read.csv("Sled_Y2_HoboLightTemp.csv", header = TRUE, fileEncoding="UTF-8-BOM") #import
+Sled_Y2_Hobo_orig <- read.csv("./validation_data/venolia2020/Sled_Y2_HoboLightTemp.csv", header = TRUE, fileEncoding="UTF-8-BOM") #import
 Sled_Y2_Hobo_orig$DateTime <- mdy_hms(Sled_Y2_Hobo_orig$DateTime) #convert date time field
 Sled_Y2_Hobo_orig$Temp_K <- Sled_Y2_Hobo_orig$Temp_C+273.15 #create column with temp in K
 SledY2T_hourly <- ceiling_date(Sled_Y2_Hobo_orig$DateTime, unit = "hour") #determine times to aggregate around
 
 # Point Judith Pond S (dredge)
-Dredge_Y2_Hobo_orig <- read.csv("Dredge_Y2_HoboTempLight.csv", header = TRUE, fileEncoding="UTF-8-BOM") #import
+Dredge_Y2_Hobo_orig <- read.csv("./validation_data/venolia2020/Dredge_Y2_HoboTempLight.csv", header = TRUE, fileEncoding="UTF-8-BOM") #import
 Dredge_Y2_Hobo_orig$DateTime <- mdy_hms(Dredge_Y2_Hobo_orig$DateTime) #convert date time field
 Dredge_Y2_Hobo_orig$Temp_K <- Dredge_Y2_Hobo_orig$Temp_C+273.15 #create column with temp in K
 DredgeY2T_hourly <- ceiling_date(Dredge_Y2_Hobo_orig$DateTime, unit = "hour") #determine what times to aggregate around
@@ -793,7 +794,7 @@ all_output_yr2 <- rbind(output_sled1_yr2_clean, output_sled2_yr2_clean, output_d
 ##### NB set-up year 2 ####
 
 #Wickford
-WSA_Y2 <- read.csv("WaterSamplesY2.csv", header = TRUE, fileEncoding="UTF-8-BOM") #Import water Q data
+WSA_Y2 <- read.csv("./validation_data/venolia2020/WaterSamplesY2.csv", header = TRUE, fileEncoding="UTF-8-BOM") #Import water Q data
 WSA_Y2$Date <- mdy(WSA_Y2$Date) #convert dates
 names(WSA_Y2)[1] <- "Site" #only necessary for some computers running this code
 
@@ -801,7 +802,7 @@ Wickford_WSA2 <- filter(WSA_Y2, Site == "Wickford") #filter by site
 Wickford_WSA2$NO3NO2_µM <- Wickford_WSA2$NO3NO2_µM/1000000 #convert from micromoles/L to moles/L
 
 ##### NB DIC set-up year 2 ###########
-Segarra2002Carbon <- read.csv("BrentonPoint_Segarra2002CarbonData.csv", header = TRUE, fileEncoding="UTF-8-BOM") #Import lit TCO2 data
+Segarra2002Carbon <- read.csv("./validation_data/venolia2020/BrentonPoint_Segarra2002CarbonData.csv", header = TRUE, fileEncoding="UTF-8-BOM") #Import lit TCO2 data
 names(Segarra2002Carbon)[1] <- "Date" #Only necessary for running the code on some computer
 Segarra2002Carbon$Date <- mdy(Segarra2002Carbon$Date) #time field conversion
 CO_2 <- mean(Segarra2002Carbon$TCO2_micromolPERkg)/1000000 #(mol CO2/L)
@@ -810,13 +811,13 @@ CO_2 <- mean(Segarra2002Carbon$TCO2_micromolPERkg)/1000000 #(mol CO2/L)
 
 #### NB temp set-up year 2 #############
 # NB N (Wickford)
-Wickford_Y2_Hobo <- read.csv("Wickford_Y2_HoboLightTemp.csv", header = TRUE, fileEncoding="UTF-8-BOM") #import
+Wickford_Y2_Hobo <- read.csv("./validation_data/venolia2020/Wickford_Y2_HoboLightTemp.csv", header = TRUE, fileEncoding="UTF-8-BOM") #import
 Wickford_Y2_Hobo$DateTime <- mdy_hms(Wickford_Y2_Hobo$DateTime) #convert date time field
 Wickford_Y2_Hobo$Temp_K <- Wickford_Y2_Hobo$Temp_C+273.15 #create column with temp in K
 WickfordY2T_hourly <- ceiling_date(Wickford_Y2_Hobo$DateTime, unit = "hour") #determine the times to aggregate around
 
 # NB S (Rome)
-RomePt_Y2_Hobo_orig <- read.csv("RomePt_Y2_HoboTempLight.csv", header = TRUE, fileEncoding="UTF-8-BOM") #import
+RomePt_Y2_Hobo_orig <- read.csv("./validation_data/venolia2020/RomePt_Y2_HoboTempLight.csv", header = TRUE, fileEncoding="UTF-8-BOM") #import
 RomePt_Y2_Hobo_orig$DateTime <- mdy_hm(RomePt_Y2_Hobo_orig$DateTime) #convert date time field
 RomePt_Y2_Hobo_orig$Temp_K <- RomePt_Y2_Hobo_orig$Temp_C+273.15 #create collumn with temp in K
 RomePtY2T_hourly <- ceiling_date(RomePt_Y2_Hobo_orig$DateTime, unit = "hour") #determine the times to aggregate around
@@ -859,7 +860,7 @@ output_W_yr2_clean <- output_W_yr2 %>%
 ### Rome Pt line 1 Year 2####
 
 ###### N forcing set-up #
-GSO_N1 <- read.csv("T98BayNitrate.csv", header = TRUE, fileEncoding="UTF-8-BOM") #Import water quality data
+GSO_N1 <- read.csv("./validation_data/venolia2020/T98BayNitrate.csv", header = TRUE, fileEncoding="UTF-8-BOM") #Import water quality data
 GSO_N1$Date <- mdy(GSO_N1$Date) #convert dates
 GSO_N1 <- GSO_N1[103:124,]
 GSO_N1$NO3NO2 <- GSO_N1$NO3NO2/1000000 #convert from micromoles/L to moles/L
@@ -897,7 +898,7 @@ output_R1_yr2_clean <- output_R1_yr2 %>%
          source="Narragansett Bay S 1")
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ### Rome Pt line 2 Year 2 ####
-GSO_N1 <- read.csv("T98BayNitrate.csv", header = TRUE, fileEncoding="UTF-8-BOM") #Import water quality data
+GSO_N1 <- read.csv("./validation_data/venolia2020/T98BayNitrate.csv", header = TRUE, fileEncoding="UTF-8-BOM") #Import water quality data
 GSO_N1$Date <- mdy(GSO_N1$Date) #convert dates
 GSO_N1 <- GSO_N1[112:124,]
 GSO_N1$NO3NO2 <- GSO_N1$NO3NO2/1000000 #convert from micromoles/L to moles/L
@@ -908,7 +909,7 @@ I_field <- approxfun(x = seq(from = 0, to = 2208, by = 3), y = NOAA_Irradiance_R
 
 AvgTempKbyhr <- aggregate(RomePt_Y2_Hobo_orig$Temp_K, by=list(RomePtY2T_hourly), mean) #calculate average hourly temp
 AvgTempKbyhr_sub <- AvgTempKbyhr[1536:2414,] #subset
-#Using Wickford temp to fill in th gap in the Rome Pt temp
+#Using Wickford temp to fill in the gap in the Rome Pt temp
 AvgTempKbyhr_W <- AvgTempKbyhr_Wickford[2415:3716,]
 fd2 <- rep(287, 28)
 T_field <- approxfun(x = c(0:2208), y = c(AvgTempKbyhr_sub$x, AvgTempKbyhr_W$x, fd2), method = "linear", rule = 2) #the temp forcing function
@@ -952,7 +953,7 @@ all_output_NB_yr2 <- rbind(output_W_yr2_clean, output_R1_yr2_clean, output_R2_yr
   ))
 
 ### Import field data ####
-KelpY2 <- read.csv("Year2kelpdata.csv", header = TRUE, fileEncoding="UTF-8-BOM")
+KelpY2 <- read.csv("./validation_data/venolia2020/Year2kelpdata.csv", header = TRUE, fileEncoding="UTF-8-BOM")
 names(KelpY2)[2] <- "Site"
 KelpY2 <- filter(KelpY2, Site != "Fox Island")
 KelpY2$Date <- mdy(KelpY2$SamplingDate)
@@ -1134,7 +1135,7 @@ all_rmse <- all_rmse %>% ungroup() %>%
               mutate(orig_rmse = rmse) %>% 
               select(source, year, orig_rmse), by=c("source", "year")) %>%
   mutate(improvement = orig_rmse-rmse) %>% 
-  mutate(id=paste(source, year))
+  mutate(id=paste(source, year)) %>% ungroup()
 
 all_rmse %>% 
   filter(level!="orig") %>% 
@@ -1157,19 +1158,15 @@ all_rmse %>%
             mean_imp = mean(improvement)) %>% 
   arrange(year) %>% 
   ungroup() 
-  #gt()%>% 
- # fmt_percent(columns=perc_imp,decimals=1) %>% 
-  #fmt_number(columns = c("mean_imp", "med_imp"), decimals = 2) %>% 
- # fmt(columns = level, fns=str_to_title) %>% 
- # cols_width(everything() ~ px(80))
 
-  all_rmse %>% 
-    filter(level!="orig", level!="lit") %>% 
-    group_by(level, year) %>% 
-     wilcox_test(improvement ~ 0, alternative="greater") %>%
-     adjust_pvalue(method="bonferroni") %>% 
-     p_round() %>% 
-     p_mark_significant()
+rmse_matrix <- all_rmse %>% 
+  select(id, rmse, level) %>% ungroup() %>% 
+  pivot_wider(names_from = level, values_from = rmse) %>%
+  column_to_rownames(var="id") %>% 
+  as.matrix() 
+
+friedman.test(rmse_matrix)
+frdAllPairsNemenyiTest(rmse_matrix, p.adjust = "bonferroni")
   
 ### RMSE no erosion ####
 rmse_short <- field_data %>% 
@@ -1197,7 +1194,8 @@ all_rmse_short <- all_rmse_short %>% ungroup() %>%
     left_join(orig_rmse_short %>% 
               mutate(orig_rmse = rmse) %>% 
               select(source, year, orig_rmse), by=c("source", "year")) %>%
-    mutate(improvement = orig_rmse-rmse)
+    mutate(improvement = orig_rmse-rmse) %>% 
+  mutate(id=paste(source, year)) %>% ungroup()
 
 all_rmse_short %>% 
   filter(level!="orig", level!="lit") %>% 
@@ -1210,4 +1208,4 @@ all_rmse_short %>%
             mean_imp = mean(improvement)) %>% 
   arrange(year) %>% 
   ungroup() 
-    
+  
