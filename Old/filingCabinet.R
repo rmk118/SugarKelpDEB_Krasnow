@@ -880,7 +880,6 @@ nemenyi$p.value %>%
   gt() %>% 
   tab_footnote(
     footnote = "*p<0.05; **p<0.01; ***p<0.001"
-   # locations = cells_column_labels(columns = sza)
   )
 
 View(all_rmse %>% filter(level!="orig") %>% mutate(across(where(is.double), ~round(.x, digits=2))) %>% select(-id) %>% arrange(source, year) %>% mutate(level = str_to_title(level)))
@@ -893,3 +892,65 @@ wilcox_test(improvement ~ level, alternative="less", data=all_rmse %>% filter(le
 
 # Wilcoxon rank-sum test (using truncated field data/model predictions) comparing improvement in RMSE over original params between cold and warm calibrations - sig.
 wilcox_test(improvement ~ level, alternative="less", data=all_rmse_short %>% filter(level!="lit", level!="orig"))  
+
+
+# Jevne -------------------------------------------------------------------
+
+# params_jevne <- params_nested %>% unnest(cols=c(data)) %>%
+#   bind_rows(.,.,.,.) %>% 
+#   arrange(level) %>% 
+#   bind_cols(data.frame(rep(trt_vec, 4))) %>% 
+#   rename(trt=rep.trt_vec..4.) %>% 
+#   nest(data=c(T_A, T_H, T_AH))
+
+###### Model runs #####
+# output_jevne <- params_jevne %>% 
+#   mutate(std_L = future_map2(data, trt, function(df, x) {
+#     temp_params <- params_Lo
+#     temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
+#     
+#     env_data_temp <- env_data_jevne %>% filter(trt==x)
+#     I_field <- approxfun(x = seq(from = 0, to = 19*24, by = 1), y = env_data_temp$PAR*3600*1e-6, method = "linear", rule = 2) 
+#     T_field <- approxfun(x = seq(from = 0, to = 19*24, by = 1), y = env_data_temp$temp_K, method = "linear", rule = 2)
+#     N_field <- approxfun(x = seq(from = 0, to = 19*24, by = 1), y = env_data_temp$N, method = "linear", rule = 2) 
+#     ode_output <- ode(y = state_jevne, t = times_jevne, func = rates_Lo, parms = temp_params)
+#     ode_output <- as.data.frame(ode_output) %>% mutate(Trt=x) #convert deSolve output into data frame
+#     ode_output
+#   }))
+# 
+# output_jevne <- output_jevne %>%
+#    select(-data) %>% 
+#    unnest(cols=std_L) %>% 
+#    ungroup() %>% 
+#    group_by(level,trt ) %>% 
+#    mutate(date=hourly_seq_jevne, #add date column
+#           .before=1) #putting new columns at the beginning for readability
+
+
+
+trt_vec <- c("D1", "S1", "D4", "S4")
+# 
+# run_jevne <- function(x) {
+#       env_data_temp <- env_data_jevne %>% filter(trt==x)
+#       I_field <- approxfun(x = seq(from = 0, to = 30*24, by = 1), y = env_data_temp$PAR*3600*1e-6, method = "linear", rule = 2)
+#       T_field <- approxfun(x = seq(from = 0, to = 30*24, by = 1), y = env_data_temp$temp_K, method = "linear", rule = 2)
+#       N_field <- approxfun(x = seq(from = 0, to = 30*24, by = 1), y = env_data_temp$N, method = "linear", rule = 2)
+#       
+#      df_output <- params_nested %>% mutate(std_L = future_map(data, function(df) {
+#             temp_params <- params_Lo
+#             temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
+#             ode_output <- ode(y = state_jevne, t = times_jevne, func = rates_Lo, parms = temp_params)
+#             ode_output <- as.data.frame(ode_output) #convert deSolve output into data frame
+#       ode_output }))
+#      df_output %>% mutate(trt=x, .before=1)
+# }
+# 
+# 
+# output_jevne <- future_map(trt_vec, run_jevne) %>%
+#   bind_rows() %>% 
+#    select(-data) %>%
+#    unnest(cols=std_L) %>%
+#    ungroup() %>%
+#    group_by(level,trt) %>%
+#    mutate(date=hourly_seq_jevne, #add date column
+#           .before=1) #putting new columns at the beginning for readability
