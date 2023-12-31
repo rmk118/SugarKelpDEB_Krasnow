@@ -140,7 +140,7 @@ env_data <- matsson_temp %>%
 
 env_data <- env_data %>% mutate(across(c(temp, N, PAR), ~na.approx(.x, rule=2))) %>% 
   na.omit() %>% 
-  mutate(PAR=PAR*3600*1e-6,
+  mutate(PAR=PAR*3600*1e-6, #convert PAR from µmol m-2 s-1 to mol m-2 h-1
          temp_K=temp+273.15)
 
 # Irradiance forcing function
@@ -235,7 +235,9 @@ output_matsson %>% filter(time==3696) %>% select(date, L_allometric, level)
 
 
 # JEVNE 2020 --------------------------------------------------------------
-#D4: deep water low light
+#D4: deep water (higher N) low light
+#D1: deep water (higher N) high light
+#S4: surface water low light
 #S1: surface water high light
 
 ###### Time steps ######
@@ -298,16 +300,17 @@ env_data_jevne <- env_data_jevne %>%
 ###### Initial conditions #####
 # The kelp started the acclimation period with an avg length of 45.8 ± 2.4 cm
 # Assuming they grew to be about as large as 1 SD above the mean at the beginning of the acclimation period would give a mean around 48.5
-View(output_matsson %>% filter(L_allometric < 49 & L_allometric > 48) %>% select(m_EC, m_EN, M_V, W, L_allometric, level))
+output_matsson %>% filter(L_allometric < 49 & L_allometric > 48) %>% select(m_EC, m_EN, M_V, W, L_allometric, level)
 #when length is around 48.5 cm, m_EC around 0.313, m_EN = 0.000918, M_V=0.0295, W=1.16
 state_jevne <- c(m_EC = 0.313, #Reserve density of C reserve (initial mass of C reserve per initial mass of structure)
               m_EN = 0.000918,  #Reserve density of N reserve (initial mass of N reserve per initial mass of structure)
               M_V = 1.16/(w_V+0.000918*w_EN+0.313*w_EC)) #molM_V #initial mass of structure
 W <- 1.16 #initial biomass for conversions
 
+###### Model runs #####
 ####### ~ S1 #####
 S1 <- env_data_jevne %>% filter(trt=="S1")
-# Irradiance forcing function
+# Irradiance forcing function, convert PAR from µmol m-2 s-1 to mol m-2 h-1
 I_field <- approxfun(x = seq(from = 0, to = 19*24, by = 1), y = S1$PAR*3600*1e-6, method = "linear", rule = 2) 
 # Temperature forcing function
 T_field <- approxfun(x = seq(from = 0, to = 19*24, by = 1), y = S1$temp_K, method = "linear", rule = 2)
@@ -482,3 +485,4 @@ temp_plot_jevne<-ggplot(data=env_data_jevne)+
 
 PAR_plot_jevne+N_plot_jevne+temp_plot_jevne+
   plot_layout(guides = 'collect')
+

@@ -954,3 +954,178 @@ trt_vec <- c("D1", "S1", "D4", "S4")
 #    group_by(level,trt) %>%
 #    mutate(date=hourly_seq_jevne, #add date column
 #           .before=1) #putting new columns at the beginning for readability
+
+
+
+# BODERSKOV 2015 --------------------------------------------------------------
+
+#HN = high nutrients, LN=low nutrients
+bod_lowN <- tribble(
+  ~date, ~N,
+  as_datetime("2012-10-16 00:00:00"), 0.0001,
+  as_datetime("2012-10-31 00:00:00"), 0.0001,
+  as_datetime("2012-11-12 00:00:00"), 0.05185,
+  as_datetime("2012-11-26 00:00:00") , 0.05432,
+  as_datetime("2012-12-03 00:00:00"), 0.90123
+) %>% mutate(N=N/10^6)
+
+
+bod_N <- bind_rows(LN=bod_lowN, HN=bod_highN, .id = "N_trt")
+bod_N_wide <- bod_N %>% pivot_wider(names_from = N_trt, values_from = N)
+#HL = high light, LL=low light
+
+###### Time steps #####
+# Experimental period was October 16-December 3, 2012 (growth period of 49 days)
+hourly_seq_bod <- seq(ymd_hms("2012-10-16 00:00:00"),ymd_hms("2012-12-03 00:00:00"), by="hour") # hourly sequence of POSIXct values
+times_bod <- seq(0, 48*24, 1) #49 days stepped hourly
+
+###### Environmental forcing data #####
+bod_N <- read_csv("./validation_data/boderskov2015/boderskov2015highN.csv", col_names = c("date", "N"), col_types = "Dd") %>% mutate(date=as_datetime(date),                                                                                                 date = round_date(date, unit="hour"))  %>% arrange(date) %>% mutate(N=N/10^6) #convert to moles
+
+bod_temp <- read_csv("./validation_data/boderskov2015/boderskov2015temp.csv", col_names = c("date", "temp"), show_col_types ="FALSE") %>% 
+  mutate(date=paste0(date, ":00"),
+         date=as_datetime(date),
+         date = round_date(date, unit="hour")) %>% 
+  arrange(date) %>% group_by(date) %>% summarise(temp = mean(temp)-5)  %>% arrange(date)
+
+bod_PAR_wide <- read_csv("./validation_data/boderskov2015/boderskov2015PAR.csv", col_names = c("date", "PAR"), show_col_types ="FALSE") %>% 
+  mutate(date=paste0(date, ":00"), date=as_datetime(date), date = round_date(date, unit="hour"),
+         PAR=PAR/24) %>%  #convert PAR from mol m-2 day-1 to mol m-2 h-1
+  mutate(HL = 0.44*PAR, LL=0.21*PAR) %>% 
+  select(-PAR) %>% 
+  arrange(date) %>% group_by(date) %>% summarise(HL = mean(HL), LL=mean(LL))
+
+bod_PAR <- bod_PAR_wide %>% pivot_longer(cols=c(HL, LL),names_to = "PAR_trt", values_to = "PAR")
+
+env_data_bod <- bod_temp %>% full_join(bod_PAR_wide) %>% full_join(bod_N) %>% full_join(data.frame(date=hourly_seq_bod))  %>% arrange(date) %>% 
+  mutate(across(c(temp, N, LL, HL), ~na.approx(.x, rule=2))) %>% 
+  mutate(temp_K=temp+273.15)
+
+env_data_bod <- env_data_bod %>% pivot_longer(cols=c(HL, LL), names_to = "trt", values_to = "PAR")
+
+
+###### Initial conditions #####
+# The kelp used for hole punching started as "large (>70cm)"; we will assume a mean starting length of ~75cm
+output_matsson %>% filter(L_allometric < 75.1 & L_allometric > 75) %>% select(m_EC, m_EN, M_V, W, L_allometric, level)
+#when length is around 75 cm, m_EC around 0.772, m_EN = 0.000795, M_V=0.0414, W=2.2
+state_bod <- c(m_EC = 0.498, #Reserve density of C reserve (initial mass of C reserve per initial mass of structure)
+               m_EN = 0.000593,  #Reserve density of N reserve (initial mass of N reserve per initial mass of structure)
+               M_V = 2.2/(w_V+0.000593*w_EN+0.490*w_EC)) #molM_V #initial mass of structure
+W <- 2.2 #initial biomass for conversions
+
+###### Model runs #####
+####### ~ High light #####
+LL <- env_data_bod %>% filter(trt=="LL")
+# Irradiance forcing function
+I_field <- approxfun(x = seq(from = 0, to = 48*24, by = 1), y = LL$PAR, method = "linear", rule = 2) 
+# Temperature forcing function
+T_field <- approxfun(x = seq(from = 0, to = 48*24, by = 1), y = LL$temp_K, method = "linear", rule = 2)
+# Nitrate forcing function
+N_field <- approxfun(x = seq(from = 0, to = 48*24, by = 1), y = LL$N, method = "linear", rule = 2) 
+
+LL_output <- params_nested %>% mutate(std_L = future_map(data, function(df) {
+  temp_params <- params_Lo
+  temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
+  ode_output <- ode(y = state_bod, t = times_bod, func = rates_Lo, parms = temp_params)
+  ode_output <- as.data.frame(ode_output) #convert deSolve output into data frame
+  ode_output })) %>% 
+  select(-data) %>%
+  unnest(cols=std_L) %>%
+  ungroup() %>%
+  group_by(level) %>%
+  mutate(date=hourly_seq_bod, trt="LL", #add date and trt columns
+         .before=1) #putting new columns at the beginning for readability
+
+######## ~ Low light #####
+HL <- env_data_bod %>% filter(trt=="HL")
+# Irradiance forcing function
+I_field <- approxfun(x = seq(from = 0, to = 48*24, by = 1), y = HL$PAR, method = "linear", rule = 2) 
+# Temperature forcing function
+T_field <- approxfun(x = seq(from = 0, to = 48*24, by = 1), y = HL$temp_K, method = "linear", rule = 2)
+# Nitrate forcing function
+N_field <- approxfun(x = seq(from = 0, to = 48*24, by = 1), y = HL$N, method = "linear", rule = 2) 
+
+HL_output <- params_nested %>% mutate(std_L = future_map(data, function(df) {
+  temp_params <- params_Lo
+  temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
+  ode_output <- ode(y = state_bod, t = times_bod, func = rates_Lo, parms = temp_params)
+  ode_output <- as.data.frame(ode_output) #convert deSolve output into data frame
+  ode_output })) %>% 
+  select(-data) %>%
+  unnest(cols=std_L) %>%
+  ungroup() %>%
+  group_by(level) %>%
+  mutate(date=hourly_seq_bod, trt="HL", #add date and trt columns
+         .before=1) #putting new columns at the beginning for readability
+
+bod_output <- bind_rows(LL_output, HL_output)
+
+###### Import observed data and combine with model output #####
+bod_output %>% 
+  select(date, trt, level, W, L_allometric) %>% 
+  mutate(change = L_allometric-75.02901,
+         days = as.numeric(as.duration(date-as_datetime("2012-10-16 00:00:00")))/3600/24) %>% 
+  filter(days %%1==0) %>% 
+  mutate(model_growth_rate = change/days) %>% 
+  filter(days %in% c(7, 21, 37)) %>% view()
+
+bod_output %>% 
+  select(date, trt, level, W, L_allometric) %>% 
+  mutate(days = as.numeric(as.duration(date-as_datetime("2012-10-16 00:00:00")))/3600/24) %>% 
+  filter(days %% 1==0) %>% 
+  mutate(change=L_allometric-lag(L_allometric),
+         time_elapsed = days-lag(days),
+         model_growth_rate = change/time_elapsed) %>% 
+  filter(days %in% c(7, 21, 37)) %>% 
+  view()
+
+highNbod <- tribble(
+  ~days, ~growth_rate,
+  7, 0.21092,
+  21, 0.27500,
+  37, 0.26197
+)
+
+###### Figures #####
+#-75.02901
+# Growth figures
+ggplot(data=bod_output %>% filter(level!="lit"))+
+  geom_line(aes(x=date, y=L_allometric-75.02901, color=level), linewidth=1)+
+  labs(x="Date", y="Kelp frond length (cm)", color=NULL)+
+  #geom_line(aes(x=date, y=W*30/100, color=level), linewidth=1)+
+  # labs(x="Date", y="Kelp biomass per tank (kg)", color=NULL)+
+  theme_classic()+
+  facet_wrap(~trt)+
+  theme(text = element_text(size=18),
+        axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
+        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))+
+  ylim(0,NA)
+
+### Environmental figures
+PAR_plot_bod<- ggplot(data=env_data_bod)+
+  #convert PAR from mol m-2 h-1 to µmol m-2 s-1 PAR*10^6/(3600)
+  geom_line(aes(x=date, y=PAR, color=trt), linewidth=1)+ 
+  labs(x=NULL, y=expression(paste("PAR (μmol photons ",  m^-2, " ",s^-1, ")")), color=NULL, linetype=NULL)+
+  theme_classic()+
+  theme(text = element_text(size=16),
+        axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
+        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))
+
+N_plot_bod<-ggplot(data=env_data_bod)+
+  geom_line(aes(x=date, y=N*10^6), linewidth=1)+
+  labs(x=NULL, y=bquote("NO"[3]~" (µM)"), color=NULL, linetype=NULL)+
+  theme_classic()+
+  theme(text = element_text(size=16),
+        axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
+        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))
+
+temp_plot_bod<-ggplot(data=env_data_bod)+
+  geom_line(aes(x=date, y=temp), linewidth=1)+
+  labs(x=NULL, y="Temperature (°C)")+
+  theme_classic()+
+  theme(text = element_text(size=16),
+        axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
+        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))+ylim(-1,NA)
+
+PAR_plot_bod+N_plot_bod+temp_plot_bod
+
