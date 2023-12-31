@@ -112,7 +112,7 @@ output_matsson <- params_nested %>%
   temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
   
   ode_output <- ode(y = state_Lo, t = times_Matsson, func = rates_Lo, parms = temp_params)
-   ode_output <- as.data.frame(ode_output) #%>% select(time, W, L_allometric) #convert deSolve output into data frame and keep most relevant columns
+   ode_output <- as.data.frame(ode_output) #convert deSolve output into data frame
    ode_output
 }))
   
@@ -184,6 +184,10 @@ output_matsson %>% filter(time==3696) %>% select(date, L_allometric, level)
 
 
 # JEVNE 2020 --------------------------------------------------------------
+#D1: deep water high light
+#D4: deep water low light
+#S1: surface water high light
+#S4: surface water low light
 
 ###### Time steps ######
 # Experimental period was June 1-19th, 2014 (growth period of 20 days)
@@ -241,6 +245,13 @@ env_data_jevne <- env_data_jevne %>%
   mutate(temp_K=temp+273.15) %>% 
   filter(date > as_datetime("2014-05-31: 23:00:00"))
 
+# Irradiance forcing function
+I_field <- approxfun(x = seq(from = 0, to = 19*24, by = 1), y = env_data_jevne$PAR*3600*1e-6, method = "linear", rule = 2) 
+# Temperature forcing function
+T_field <- approxfun(x = seq(from = 0, to = 19*24, by = 1), y = env_data_jevne$temp_K, method = "linear", rule = 2)
+# Nitrate forcing function
+N_field <- approxfun(x = seq(from = 0, to = 19*24, by = 1), y = env_data_jevne$N, method = "linear", rule = 2) 
+
 ###### Initial conditions #####
 # The kelp started the acclimation period with an avg length of 45.8 ± 2.4 cm
 # Assuming they grew to be about as large as 1 SD above the mean at the beginning of the acclimation period would give a mean around 48.5
@@ -251,6 +262,64 @@ state_jevne <- c(m_EC = 0.313, #Reserve density of C reserve (initial mass of C 
               M_V = 1.16/(w_V+0.000918*w_EN+0.313*w_EC)) #molM_V #initial mass of structure
 W <- 1.16 #initial biomass for conversions
 
+trt_vec <- c("D1", "S1", "D4", "S4")
+
+run_jevne <- function(x) {
+      env_data_temp <- env_data_jevne %>% filter(trt==x)
+      I_field <- approxfun(x = seq(from = 0, to = 19*24, by = 1), y = env_data_temp$PAR*3600*1e-6, method = "linear", rule = 2)
+      T_field <- approxfun(x = seq(from = 0, to = 19*24, by = 1), y = env_data_temp$temp_K, method = "linear", rule = 2)
+      N_field <- approxfun(x = seq(from = 0, to = 19*24, by = 1), y = env_data_temp$N, method = "linear", rule = 2)
+      
+     df_output <- params_nested %>% mutate(std_L = future_map(data, function(df) {
+            temp_params <- params_Lo
+            temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
+            ode_output <- ode(y = state_jevne, t = times_jevne, func = rates_Lo, parms = temp_params)
+            ode_output <- as.data.frame(ode_output) #convert deSolve output into data frame
+      ode_output }))
+     df_output %>% mutate(trt=x, .before=1)
+}
+
+future_map(trt_vec, run_jevne)
+
+output_jevne <- future_map(trt_vec, run_jevne) %>%
+  bind_rows() %>% 
+   select(-data) %>%
+   unnest(cols=std_L) %>%
+   ungroup() %>%
+   group_by(level,trt) %>%
+   mutate(date=hourly_seq_jevne, #add date column
+          .before=1) #putting new columns at the beginning for readability
+
+# params_jevne <- params_nested %>% unnest(cols=c(data)) %>%
+#   bind_rows(.,.,.,.) %>% 
+#   arrange(level) %>% 
+#   bind_cols(data.frame(rep(trt_vec, 4))) %>% 
+#   rename(trt=rep.trt_vec..4.) %>% 
+#   nest(data=c(T_A, T_H, T_AH))
+
+###### Model runs #####
+# output_jevne <- params_jevne %>% 
+#   mutate(std_L = future_map2(data, trt, function(df, x) {
+#     temp_params <- params_Lo
+#     temp_params[c("T_A", "T_H", "T_AH")] <- c(df$T_A, df$T_H, df$T_AH)
+#     
+#     env_data_temp <- env_data_jevne %>% filter(trt==x)
+#     I_field <- approxfun(x = seq(from = 0, to = 19*24, by = 1), y = env_data_temp$PAR*3600*1e-6, method = "linear", rule = 2) 
+#     T_field <- approxfun(x = seq(from = 0, to = 19*24, by = 1), y = env_data_temp$temp_K, method = "linear", rule = 2)
+#     N_field <- approxfun(x = seq(from = 0, to = 19*24, by = 1), y = env_data_temp$N, method = "linear", rule = 2) 
+#     ode_output <- ode(y = state_jevne, t = times_jevne, func = rates_Lo, parms = temp_params)
+#     ode_output <- as.data.frame(ode_output) %>% mutate(Trt=x) #convert deSolve output into data frame
+#     ode_output
+#   }))
+# 
+# output_jevne <- output_jevne %>%
+#    select(-data) %>% 
+#    unnest(cols=std_L) %>% 
+#    ungroup() %>% 
+#    group_by(level,trt ) %>% 
+#    mutate(date=hourly_seq_jevne, #add date column
+#           .before=1) #putting new columns at the beginning for readability
+
 ###### Import observed data #####
 jevne_growth <- read_delim("./validation_data/jevne2020/jevne2020growthN.CSV", delim=";", show_col_types = FALSE) %>% select(Sampleday, Treatment, Replicate, Growth_mean)
 
@@ -260,6 +329,16 @@ jevne_growth <- jevne_growth %>% mutate(date = dmy(Sampleday),
                         growth = as.double(str_replace(Growth_mean,",", ".")), .keep="unused")
 
 ###### Figures ####
+
+# Growth figure
+ggplot(data=output_jevne %>% filter(level!="lit"))+
+  geom_line(aes(x=date, y=L_allometric, color=trt), linewidth=1)+
+  labs(x="Date", y="Kelp frond length (cm)", color=NULL)+
+  facet_wrap(~level)+
+  theme_classic()+
+  theme(text = element_text(size=18),
+        axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
+        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))
 
 ### Environmental figures
 PAR_plot_jevne<- ggplot(data=env_data_jevne)+
