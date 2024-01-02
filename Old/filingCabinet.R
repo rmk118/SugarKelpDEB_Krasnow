@@ -1129,3 +1129,5 @@ temp_plot_bod<-ggplot(data=env_data_bod)+
 
 PAR_plot_bod+N_plot_bod+temp_plot_bod
 
+#highN_params <- params_Lo
+#highN_params[c("JENAM", "K_N")] <- c(7.5e-5, 1.65e-06)

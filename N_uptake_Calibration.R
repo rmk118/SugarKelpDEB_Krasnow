@@ -16,10 +16,10 @@ Nuptake <- function(params_Lo, T_dat, Nmax, w_EN){
   JENAM <- params_Lo$JENAM
   K_N <- params_Lo$K_N
   W <- 0.019 #These should be set based on whatever information you have on literature or field data being used
-  M_V <- 0.0003418 #in Espinoza and Chapman (1983), blade length starts at around 3 cm, which allows for an estmiation of B
+  M_V <- 0.0003418 #in Espinoza and Chapman (1983), blade length starts at around 3 cm, which allows for an estimation of W
   #0.019 = (29.89+0.4*62+0.03*30)*M_V
   
-  T_dat <- T_dat + 273.15 #if converstion to Kelvin is needed
+  T_dat <- T_dat + 273.15 #if conversion to Kelvin is needed
   #temperature correction
   C_T <- exp((T_A/T_0)-(T_A/T_dat)) * (1+exp((T_AL/T_0)-(T_AL/T_L))+exp((T_AH/T_H)-(T_AH/T_0))) * ((1+exp((T_AL/T_dat)-(T_AL/T_L))+exp((T_AH/T_H)-(T_AH/T_dat)))^-1)
   N <- seq(0, Nmax, 1e-08) #array from 0 to Nmax stepped by an interval of 1e-08
