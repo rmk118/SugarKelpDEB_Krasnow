@@ -592,7 +592,7 @@ PAR_data_bruhn2 <- bruhn_PAR %>%
 
 ###### Initial conditions #####
 # The kelp started the acclimation period with an avg length of 1mm, so will use same initial conditions as year 1 in Venolia et al. (2020)
-W <- 0.00013 #initial biomass for conversions
+W <- 0.00014 #initial biomass for conversions
 state_bruhn <- c(m_EC = 0.002, m_EN = 0.001,
               M_V = W/(w_V+0.001*w_EN+0.002*w_EC))
 
@@ -671,7 +671,7 @@ VIB3727_2.5_output <- params_nested %>% mutate(std_L = future_map(data, function
   mutate(date=hourly_seq_bruhn1, station="VIB3727", depth=2.5, #add date, station, and depth columns
          .before=1) #putting new columns at the beginning for readability
 
-####### ~ Færker Vig #####
+######## ~ Færker Vig #####
 T_field <- approxfun(x = times_bruhn2, y = tempN_data_bruhn2 %>% filter(station=="VIB3708") %>% pull(temp_K), method = "linear", rule = 2)
 
 N_field <- approxfun(x = times_bruhn2, y = (tempN_data_bruhn2 %>% filter(station=="VIB3708") %>% pull(N)), method = "linear", rule = 2) 
@@ -720,39 +720,78 @@ bruhn_growth<- read_csv("./validation_data/bruhn2016/bruhn_length.csv",col_names
                           str_ends(label,"may")~ymd_hms("2012-05-25 00:00:00")))
 
 
-bruhn_output <- VIB3702_2.5_output %>% bind_rows(VIB3702_1.5_output) %>% bind_rows(VIB3727_1.5_output) %>% bind_rows(VIB3727_2.5_output)%>% bind_rows(VIB3708_1.5_output) %>% bind_rows(VIB3708_2.5_output) %>% filter(level!="lit")
+bruhn_output <- VIB3702_2.5_output %>% bind_rows(VIB3702_1.5_output, VIB3727_1.5_output, VIB3727_2.5_output, VIB3708_1.5_output, VIB3708_2.5_output) %>% 
+  filter(level!="lit")
 
-bruhn_samples <- bruhn_output %>% filter(date %in% as_datetime(c("2012-04-11", "2012-05-25", "2012-06-12"))) %>% select(date, station, depth, level, W, L_allometric) %>% rename(model=L_allometric) 
+bruhn_samples <- bruhn_output %>% filter(date %in% as_datetime(c("2012-04-11", "2012-05-25", "2012-06-12"))) %>% 
+  select(date, station, depth, level, W, L_allometric) %>% 
+  rename(model=L_allometric) 
 
-bruhn_samples <- bruhn_growth %>% left_join(bruhn_samples) %>% pivot_longer(cols=c(len, model), names_to = "type", values_to = "length") %>% mutate(date = if_else(date==ymd_hms("2012-05-25 00:00:00"), ymd_hms("2012-06-12 00:00:00"), date))
+bruhn_samples <- bruhn_growth %>% left_join(bruhn_samples) %>% 
+  pivot_longer(cols=c(len, model), names_to = "type", values_to = "length") %>% 
+  mutate(sample_time = if_else(date==ymd_hms("2012-05-25 00:00:00") | date==ymd_hms("2012-06-12 00:00:00"),"june", "april"))
 
-# ggplot(data=bruhn_samples %>% filter(date==as_datetime("2012-04-11")), aes(x=depth, y=length, fill=factor(type)))+
-#   geom_bar(stat="identity", position="dodge")+
-#   scale_fill_discrete(name="",
-#                       breaks=c("len", "model"),
-#                       labels=c("Obs", "Model"))+
-#   facet_grid(level~station)
-# 
-# ggplot(data=bruhn_samples %>% filter(date!=as_datetime("2012-04-11")), aes(x=depth, y=length, fill=factor(type)))+
-#   geom_bar(stat="identity", position="dodge")+
-#   scale_fill_discrete(name="",
-#                       breaks=c("len", "model"),
-#                       labels=c("Obs", "Model"))+
-#   facet_grid(level~station, scales="free_x")
+##### SGR #####
 
-ggplot()+
-  geom_bar(data=bruhn_samples %>% filter(type=="len", level=="warm"), stat="identity", position="dodge", aes(x=depth, y=length, fill=factor(date)))+
-  geom_point(data=bruhn_samples %>% filter(type!="len", level=="warm"), aes(x=depth, y=length,group=factor(date)), position = position_dodge(width = 1))+
-  facet_wrap(~station)
+bruhn_sgr<- read_csv("./validation_data/bruhn2016/bruhnSGR.csv", col_types = "cdc") %>% 
+  mutate(station=case_when(str_starts(label,"ob")~"VIB3702",
+                           str_starts(label,"fv")~"VIB3708",
+                           str_starts(label,"rb")~"VIB3727"),
+         depth=case_when(str_detect(label,"1.5")~1.5,
+                         str_detect(label,"2.5")~2.5),
+         date = case_when(str_ends(label,"april")~ymd_hms("2012-04-11 00:00:00"),
+                          str_ends(label,"june")~ymd_hms("2012-06-12 00:00:00"),
+                          str_ends(label,"may")~ymd_hms("2012-05-25 00:00:00")))
+
+bruhn_model_sgr_2<- bruhn_samples %>% filter(type=="model") %>% 
+  arrange(date) %>% 
+  group_by(station, depth, level) %>% 
+  mutate(numerator = log(W/lag(W)),
+         time_elapsed=as.numeric(as.duration(date-lag(date)), "days"),
+model_SGR = 100*numerator/time_elapsed) %>% na.omit()
+
+bruhn_model_sgr_1<- bruhn_samples %>% filter(date==ymd_hms("2012-04-11 00:00:00"), type=="model") %>% 
+  mutate(model_SGR=case_when(
+    station=="VIB3708" & date==ymd_hms("2012-04-11 00:00:00") ~ 100*log(W/0.00014)/166,
+    station!="VIB3708" & date==ymd_hms("2012-04-11 00:00:00") ~100*log(W/0.00014)/127))
+
+bruhn_sgr_wide <- bruhn_sgr %>% pivot_wider(names_from = "var", values_from = "SGR")
+
+ggplot(data=bruhn_sgr_wide %>% filter(date==ymd_hms("2012-04-11 00:00:00")))+ 
+  geom_bar(aes(x=station, y=mean, fill=station), stat="identity")+
+  geom_errorbar(aes(x=station, ymin=low, ymax=high), width=0.4)+
+  labs(x="Date", y="SGR")+
+  theme_classic()+
+  facet_wrap(~depth)+
+  geom_point(data=bruhn_model_sgr_1, aes(x=station, y=model_SGR, shape=level))+
+  #geom_point(data=bruhn_model_sgr_2, aes(x=label, y=model_SGR, shape=level))+
+  theme(text = element_text(size=18),
+        axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
+        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))
+
 
 ###### Figures #####
 ### Growth figure
 ggplot()+ 
-geom_point(data=bruhn_growth, aes(x=date, y=len))+
-  geom_line(data= bruhn_output, aes(x=date, y=L_allometric, color=level), linewidth=1)+
+geom_point(data=bruhn_growth %>% filter(date<=ymd_hms("2012-04-11 00:00:00")), aes(x=date, y=len))+
+geom_line(data= bruhn_output %>% filter(date<=ymd_hms("2012-04-11 00:00:00")), aes(x=date, y=L_allometric, color=level), linewidth=1)+
+geom_line(data= bruhn_output %>% filter(date<=ymd_hms("2012-04-11 00:00:00"), level=="warm"), aes(x=date, y=(W*1000/0.729)^(1/1.911)), linewidth=0.5, linetype="dotted")+
   labs(x="Date", y="Kelp frond length (cm)", color=NULL)+
   theme_classic()+
-  facet_grid(depth~station)+
+  facet_grid(depth~station, scales="free")+
+  theme(text = element_text(size=18),
+        axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
+        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))+
+  ylim(0,NA)
+
+ggplot()+ 
+  geom_point(data=bruhn_growth, aes(x=date, y=len))+
+  geom_line(data= bruhn_output %>% filter(level=="warm"), aes(x=date, y=L_allometric, color="orig"), linewidth=0.5)+
+  geom_line(data= bruhn_output %>% filter(level=="warm"), aes(x=date, y=(W*1000/0.729)^(1/1.911), color="scrosati"), linewidth=0.5)+
+  geom_line(data= bruhn_output %>% filter(level=="warm"), aes(x=date, y=(W/0.0155)^(1/1.358), color="stagnol"), linewidth=0.5)+
+  labs(x="Date", y="Kelp frond length (cm)", color=NULL)+
+  theme_classic()+
+  facet_grid(depth~station, scales="free")+
   theme(text = element_text(size=18),
         axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
         axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))+

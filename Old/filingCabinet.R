@@ -1131,3 +1131,15 @@ PAR_plot_bod+N_plot_bod+temp_plot_bod
 
 #highN_params <- params_Lo
 #highN_params[c("JENAM", "K_N")] <- c(7.5e-5, 1.65e-06)
+
+ggplot(data=bruhn_samples %>% filter(date==as_datetime("2012-04-11")), aes(x=depth, y=length, fill=factor(type)))+
+  geom_bar(stat="identity", position="dodge")+
+  scale_fill_discrete(name="",
+                      breaks=c("len", "model"),
+                      labels=c("Obs", "Model"))+
+  facet_grid(level~station)
+
+ggplot()+
+  geom_bar(data=bruhn_samples %>% filter(type=="len", level=="warm"), stat="identity", position="dodge", aes(x=depth, y=length, fill=factor(date)))+
+  geom_point(data=bruhn_samples %>% filter(type!="len", level=="warm"), aes(x=depth, y=length,group=factor(date)), position = position_dodge(width = 1))+
+  facet_wrap(~station)
