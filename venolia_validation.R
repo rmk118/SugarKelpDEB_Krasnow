@@ -1075,7 +1075,8 @@ ggplot(data=all_output %>% filter(year==1), aes(x=Date, y=L_allometric, color=le
 
 
 ggplot() +
-  theme_bw()+
+  #theme_bw()+
+  theme_classic()+
   geom_point(data=all_field_data %>% filter(str_detect(source, "Bay")), aes(x=date2017, y=mean_length,size="obs"))+
   geom_smooth(data=all_output %>% filter(str_detect(source, "Bay"), level!="lit"), aes(x=date2017, y=L_allometric, color=level))+
   facet_grid(year~source, labeller=labeller(year = c("1"="Year 1", "2"="Year 2")))+
@@ -1085,8 +1086,9 @@ ggplot() +
                      breaks=c("cold","warm","orig"),
                      labels=c("warm"="Warm", "cold"="Cold" ,"orig"="Original"))+
   labs(x=NULL, y="Length (cm)", color=NULL, size=NULL)+
-  theme(strip.background=element_rect(fill="white"),
-        text = element_text(size=16))
+  theme(text = element_text(size=16))
+    #strip.background=element_rect(fill="white"))
+       
 
 ggplot() +
   theme_bw()+

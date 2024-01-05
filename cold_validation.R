@@ -249,6 +249,8 @@ times_jevne <- seq(0, 19*24, 1) #20 days stepped hourly
 
 ###### Environmental forcing data #####
 
+CO_2 <- 2081/10^6 #mean c(DIC) for the Norwegian Coastal Current from March to Dec 2014, from Possenti et al., 2021
+
 N_files <- c(D1_N="D1_N", D4_N="D4_N", S1="S1_N", S4_N="S4_N")
 N_filepaths <- N_files %>% map_chr(\(x) paste0("./validation_data/jevne2020/", x, ".csv"))
 
@@ -397,6 +399,7 @@ jevne_growth <- jevne_growth %>% mutate(date = dmy(Sampleday),
                                         trt = as.factor(Treatment),
                                         rep = as.factor(Replicate),
                                         growth = as.double(str_replace(Growth_mean,",", ".")), .keep="unused")
+
 jevne_growth_means <- jevne_growth %>% 
   group_by(date, trt) %>% 
   summarise(mean_growth = mean(growth),
@@ -454,10 +457,16 @@ ggplot(jevne_growth_means, aes(x=date, y=mean_growth, group=trt, color=trt)) +
   geom_point(data=jevne_model_growth %>% na.omit(), aes(x=date, y=model_growth_rate))
 
 ggplot(jevne_growth_means, aes(x=date, y=mean_growth)) +
-  geom_pointrange(aes(ymin=mean_growth-sd, ymax=mean_growth+sd))+
-  geom_point(data=jevne_model_growth %>% na.omit(), aes(x=date, y=model_growth_rate, color=level))+
-  geom_line(data=jevne_model_growth %>% na.omit(), aes(x=date, y=model_growth_rate, color=level))+
-  facet_wrap(~trt)
+  geom_pointrange(aes(ymin=mean_growth-sd, ymax=mean_growth+sd, size="obs"), shape=15)+
+  #geom_point(data=jevne_model_growth %>% na.omit() %>% filter(level!="lit"), aes(x=date, y=model_growth_rate, color=level))+
+  geom_line(data=jevne_model_growth %>% na.omit() %>% filter(level!="lit"), aes(x=date, y=model_growth_rate, color=level),linewidth=1)+
+  facet_wrap(~trt, labeller=labeller(trt = c("D1"="High light, high N", "D4"="Low light, high N", "S1"="High light, low N", "S4"="Low light, low N")))+
+  theme_bw()+
+  labs(x="Date", y=expression(paste("Growth rate (cm ",d^-1, ")")), color="Model", size=NULL)+
+  scale_size_manual(values=c("obs"=0.4), breaks=c("obs"), labels=c("obs"="Observations"))+
+  scale_color_manual(values=c("warm"="#dd4124", "orig"="gray", "cold"='#0f85a0',"Observed"="black"),
+                     breaks=c("warm","orig", "cold","Observed"),
+                     labels=c("warm"="Warm","orig"="Original", "cold"="Cold","Observed"="Observations"))
 
 ### Environmental figures
 PAR_plot_jevne<- ggplot(data=env_data_jevne)+

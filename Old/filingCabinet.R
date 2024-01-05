@@ -1143,3 +1143,4 @@ ggplot()+
   geom_bar(data=bruhn_samples %>% filter(type=="len", level=="warm"), stat="identity", position="dodge", aes(x=depth, y=length, fill=factor(date)))+
   geom_point(data=bruhn_samples %>% filter(type!="len", level=="warm"), aes(x=depth, y=length,group=factor(date)), position = position_dodge(width = 1))+
   facet_wrap(~station)
+
