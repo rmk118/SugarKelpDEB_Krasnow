@@ -14,6 +14,10 @@ library(tseries)
 library(minpack.lm)
 library(deSolve)
 library(zoo)
+library(furrr) #parallel processing version of purrr, to speed up model runs
+library(rstatix)
+library(Metrics)
+library(PMCMRplus)
 
 #Required for model runs
 source("SolveR_R.R")
@@ -209,7 +213,7 @@ PAR_plot_Norway<- ggplot(data=env_data)+
 
 N_plot_Norway<-ggplot(data=env_data)+
   geom_line(aes(x=date, y=N*10^6), linewidth=1)+
-  labs(x=NULL, y=bquote("NO"[3]~" (µM)"), color=NULL, linetype=NULL)+
+  labs(x=NULL, y=bquote("NO"[3]~" (μM)"), color=NULL, linetype=NULL)+
   theme_classic()+
   theme(text = element_text(size=16),
         axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
@@ -223,7 +227,14 @@ temp_plot_Norway<-ggplot(data=env_data)+
         axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
         axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))
 
-PAR_plot_Norway+N_plot_Norway+temp_plot_Norway
+env_plots_matsson<-PAR_plot_Norway+temp_plot_Norway+N_plot_Norway
+
+ggsave(
+  filename="./figures/matsson_env.png",
+  plot=env_plots_matsson, 
+  device="png",
+  width = 1275, height = 400, units = "px",scale=2.6
+)
 
 matsson_obs %>% 
   left_join(output_matsson) %>% 
@@ -475,15 +486,17 @@ PAR_plot_jevne<- ggplot(data=env_data_jevne)+
   theme_classic()+
   theme(text = element_text(size=16),
         axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
-        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))
+        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))+
+  scale_colour_brewer(palette = "Set2")
 
 N_plot_jevne<-ggplot(data=env_data_jevne)+
   geom_line(aes(x=date, y=N*10^6, color=trt), linewidth=1)+
-  labs(x=NULL, y=bquote("NO"[3]~" (µM)"), color=NULL, linetype=NULL)+
+  labs(x=NULL, y=bquote("NO"[3]~" (μM)"), color=NULL, linetype=NULL)+
   theme_classic()+
   theme(text = element_text(size=16),
         axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
-        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))
+        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))+
+  scale_colour_brewer(palette = "Set2")
 
 temp_plot_jevne<-ggplot(data=env_data_jevne)+
   geom_line(aes(x=date, y=temp, color=trt), linewidth=1)+
@@ -491,7 +504,16 @@ temp_plot_jevne<-ggplot(data=env_data_jevne)+
   theme_classic()+
   theme(text = element_text(size=16),
         axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
-        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))
+        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))+
+  scale_colour_brewer(palette = "Set2")
 
-PAR_plot_jevne+N_plot_jevne+temp_plot_jevne+
-  plot_layout(guides = 'collect')
+env_plots_jevne<-(PAR_plot_jevne+temp_plot_jevne+N_plot_jevne)+
+  plot_layout(guides = 'collect') 
+
+ggsave(
+  filename="./figures/jevne_env.png",
+  plot=env_plots_jevne, 
+  device="png",
+  width = 1275, height = 400, units = "px",scale=2.6
+)
+
