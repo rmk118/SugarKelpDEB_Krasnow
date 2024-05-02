@@ -197,8 +197,8 @@ ggplot(data=output_matsson %>% filter(level!="lit"))+
                      breaks=c("cold","warm","orig", "Observed"),
                      labels=c("warm"="Warm", "cold"="Cold","orig"="Original", "Observed"="Observations"))+
   theme(text = element_text(size=18),
-        axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
-        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))+
+        axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0), face="bold"),
+        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0), face="bold"))+
   guides(colour = guide_legend(order = 1),
          size = guide_legend(order = 2))
 
@@ -228,6 +228,7 @@ temp_plot_Norway<-ggplot(data=env_data)+
         axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))
 
 env_plots_matsson<-PAR_plot_Norway+temp_plot_Norway+N_plot_Norway
+env_plots_matsson_tall<-PAR_plot_Norway/temp_plot_Norway/N_plot_Norway
 
 ggsave(
   filename="./figures/matsson_env.png",
@@ -467,17 +468,22 @@ ggplot(jevne_growth_means, aes(x=date, y=mean_growth, group=trt, color=trt)) +
   geom_pointrange(aes(ymin=mean_growth-sd, ymax=mean_growth+sd))+
   geom_point(data=jevne_model_growth %>% na.omit(), aes(x=date, y=model_growth_rate))
 
-ggplot(jevne_growth_means, aes(x=date, y=mean_growth)) +
+ggplot(jevne_growth_means, aes(x=date, y=mean_growth))+
   geom_pointrange(aes(ymin=mean_growth-sd, ymax=mean_growth+sd, size="obs"), shape=15)+
-  #geom_point(data=jevne_model_growth %>% na.omit() %>% filter(level!="lit"), aes(x=date, y=model_growth_rate, color=level))+
   geom_line(data=jevne_model_growth %>% na.omit() %>% filter(level!="lit"), aes(x=date, y=model_growth_rate, color=level),linewidth=1)+
   facet_wrap(~trt, labeller=labeller(trt = c("D1"="High light, high N", "D4"="Low light, high N", "S1"="High light, low N", "S4"="Low light, low N")))+
-  theme_bw()+
-  labs(x="Date", y=expression(paste("Growth rate (cm ",d^-1, ")")), color="Model", size=NULL)+
+  theme_classic()+
+  labs(x="Date", 
+       y=expression(bold(paste("Growth rate (cm ",d^-1, ")"))),
+       color="Model",
+       size=NULL)+
   scale_size_manual(values=c("obs"=0.4), breaks=c("obs"), labels=c("obs"="Observations"))+
   scale_color_manual(values=c("warm"="#dd4124", "orig"="gray", "cold"='#0f85a0',"Observed"="black"),
                      breaks=c("warm","orig", "cold","Observed"),
-                     labels=c("warm"="Warm","orig"="Original", "cold"="Cold","Observed"="Observations"))
+                     labels=c("warm"="Warm","orig"="Original", "cold"="Cold","Observed"="Observations"))+
+  theme(text = element_text(size=13),
+        axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0), face="bold"),
+        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0), face="bold"))
 
 ### Environmental figures
 PAR_plot_jevne<- ggplot(data=env_data_jevne)+
@@ -517,3 +523,6 @@ ggsave(
   width = 1275, height = 400, units = "px",scale=2.6
 )
 
+#Tall version
+(PAR_plot_jevne/temp_plot_jevne/N_plot_jevne)+
+  plot_layout(guides = 'collect') 

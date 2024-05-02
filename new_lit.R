@@ -175,9 +175,9 @@ ggplot()+
   scale_color_manual(values=c("cold"='#0f85a0',"warm"="#dd4124",  "lit"="black","original"="black"),
                      breaks=c("cold","warm","original"),
                      labels=c("warm"="Warm", "cold"="Cold" ,"original"="Original"))+
-  theme(text = element_text(size=18),
-        axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0)),
-        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0)))
+  theme(text = element_text(size=15),
+        axis.title.y = element_text(margin = margin(t = 0, r = 9, b = 0, l = 0), face="bold"),
+        axis.title.x = element_text(margin = margin(t = 9, r = 0, b = 0, l = 0), face="bold"))
 
 
 gt(params_new_lit %>% mutate(T_H=T_H-273.15)) %>% 
